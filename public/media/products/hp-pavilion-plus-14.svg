@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" role="img" aria-label="HP Pavilion Plus 14 placeholder image">
+  <rect width="800" height="800" fill="#F1F3F6"/>
+
+    <rect x="150" y="230" width="500" height="310" rx="18" fill="#E4E8EE" stroke="#D7DBE2" stroke-width="6"/>
+    <rect x="182" y="262" width="436" height="246" rx="8" fill="#F1F3F6"/>
+    <path d="M104 556 h592 a24 24 0 0 1 -24 34 H128 a24 24 0 0 1 -24 -34 z" fill="#E4E8EE" stroke="#D7DBE2" stroke-width="6"/>
+    <rect x="352" y="562" width="96" height="8" rx="4" fill="#D7DBE2"/>
+
+  <text x="400" y="112" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="30" font-weight="600" letter-spacing="6" fill="#333B47">HP</text>
+  <text x="400" y="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="28" fill="#5A6472">Pavilion Plus 14-ew1</text>
+  <text x="400" y="742" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="18" letter-spacing="2" fill="#D7DBE2">PLACEHOLDER IMAGE</text>
+</svg>

@@ -1,0 +1,9 @@
+# FONEKIST is a single-package repository (ADR-022). This file exists only because pnpm 11
+# reads `allowBuilds` from it.
+#
+# Build scripts run only by explicit decision. `true` means the package needs its
+# postinstall because it compiles or downloads a platform-specific native binary.
+allowBuilds:
+  esbuild: true
+  # Native resolver used by the Next.js ESLint config; needs its platform binary.
+  unrs-resolver: true

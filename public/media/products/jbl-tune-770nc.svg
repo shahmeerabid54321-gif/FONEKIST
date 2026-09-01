@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" role="img" aria-label="JBL Tune 770NC placeholder image">
+  <rect width="800" height="800" fill="#F1F3F6"/>
+
+    <path d="M200 430 v-40 a200 200 0 0 1 400 0 v40" fill="none" stroke="#D7DBE2" stroke-width="26" stroke-linecap="round"/>
+    <rect x="152" y="410" width="104" height="170" rx="42" fill="#E4E8EE" stroke="#D7DBE2" stroke-width="6"/>
+    <rect x="544" y="410" width="104" height="170" rx="42" fill="#E4E8EE" stroke="#D7DBE2" stroke-width="6"/>
+
+  <text x="400" y="112" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="30" font-weight="600" letter-spacing="6" fill="#333B47">JBL</text>
+  <text x="400" y="700" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="28" fill="#5A6472">Tune 770NC</text>
+  <text x="400" y="742" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="18" letter-spacing="2" fill="#D7DBE2">PLACEHOLDER IMAGE</text>
+</svg>

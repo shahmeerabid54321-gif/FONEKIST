@@ -1,0 +1,861 @@
+@import "tailwindcss";
+
+/*
+ * FONEKIST design tokens.
+ *
+ * A separate system from the Voltmark storefront's cinematic monochrome (ADR-021), which
+ * FONEKIST deliberately does not share. The discipline is borrowed from how premium phone
+ * makers present devices: generous space, restrained colour, the product photograph doing
+ * the work. The specifics are ours.
+ *
+ * Colour carries meaning and is never decoration:
+ *   ink / mist  structure and text, and every dark band on the site
+ *   emerald     trust: installments, PTA verified, warranty, in stock
+ *   amber       a promotion that is genuinely running, and a caution, and nothing else
+ *   red         two of them, and they must never be confused: see the Brand block below
+ *
+ * There is no "sale" red, no countdown, and no rating colour, because there is no review
+ * data and manufactured urgency is ruled out.
+ *
+ * ADR-003: emerald never grounds a surface. It had taken the footer, every hero and every
+ * tile scrim through `--color-deep`, a green-black, which is how a colour reserved for one
+ * narrow meaning stopped carrying it: when the accent paints the structure, it is no longer
+ * an accent and it no longer says anything. The dark bands are the logo's own black now, and
+ * emerald appears as text, a chip, a hairline or a small fill and nothing else.
+ */
+
+@theme {
+  --color-ink: #0b0c0e;
+  --color-ink-soft: #3a3d42;
+  --color-ink-muted: #6b7075;
+
+  --color-paper: #ffffff;
+  --color-mist: #f5f6f7;
+  --color-mist-deep: #e9ebed;
+  --color-hairline: #dfe2e5;
+
+  --color-emerald: #0b6b4b;
+  --color-emerald-soft: #e6f2ed;
+  --color-amber: #8a5a00;
+  --color-amber-soft: #fdf3e0;
+  --color-danger: #a3242b;
+
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Shape lock: documented once, followed everywhere. */
+  --radius-card: 20px;
+  --radius-media: 16px;
+  --radius-control: 10px;
+  --radius-chip: 999px;
+}
+
+:root {
+  --surface: var(--color-paper);
+  --surface-sunken: var(--color-mist);
+  --surface-raised: var(--color-paper);
+  --text: var(--color-ink);
+  --text-soft: var(--color-ink-soft);
+  --text-muted: var(--color-ink-muted);
+  --line: var(--color-hairline);
+  --line-strong: #c6cacd;
+
+  /*
+   * Role tokens for the accent colours.
+   *
+   * These exist because a component asking for `--color-emerald` needs three different
+   * things from it: the accent itself, a text colour that is legible ON it, and a tint to
+   * lay text over. Leaving each component to pick its own produced exactly the failure axe
+   * caught: ink on emerald is 2.99:1, well under the 4.5:1 that AA requires for body text.
+   *
+   * `-contrast` is the foreground for a filled accent surface. `-wash` is a tint that
+   * `--text` stays legible on. `-ink` is a darkened accent used AS text on a wash.
+   */
+  --color-emerald-contrast: #ffffff;
+  --color-emerald-strong: #085038;
+  --color-emerald-wash: var(--color-emerald-soft);
+  --color-amber-wash: var(--color-amber-soft);
+  --color-amber-ink: #6b4600;
+  --color-danger-wash: #fdecec;
+
+  /*
+   * The tile a product photograph sits on.
+   *
+   * Every reference storefront does this and it is not decoration: photographs arrive with
+   * different backgrounds, crops and white balance, and a grid of them looks like a jumble
+   * sale. One shared ground behind all of them is what makes a row read as a set.
+   */
+  /*
+   * The chosen-option accent, used by `has-[:checked]` on the checkout's delivery and
+   * payment cards. These were referenced by checkout-form.tsx and never defined anywhere,
+   * so `border-[var(--color-accent)]` resolved to nothing and the selected delivery method
+   * and payment method were distinguished only by the radio dot itself. On the one form on
+   * the site where picking the wrong row costs money, that is worth having.
+   *
+   * It was emerald and is ink now (ADR-003). "This is the row you picked" is a selection
+   * state, not a statement about installments, warranty or stock, and emerald is reserved
+   * for the latter. Ink also reads as chosen more strongly than a pale green wash did.
+   */
+  --color-accent: var(--text);
+  --color-accent-subtle: var(--surface-sunken);
+
+  /*
+   * The inverse band, and the tokens that survive on it.
+   *
+   * Every dark band on the site is the logo's own ground (ADR-003). It used to be
+   * `--color-deep`, a green-black, which is how a colour reserved for one narrow meaning
+   * came to paint the footer, every hero and every tile scrim, and stopped meaning anything
+   * at all. The mark was drawn on black; the bands are that black.
+   *
+   * `-2` is the step used by tiles sitting ON the band, which need to separate from it
+   * without becoming a second colour.
+   */
+  --surface-inverse: var(--brand-ink);
+  --surface-inverse-2: #16191d;
+  --on-inverse: var(--brand-paper);
+  --on-inverse-soft: rgb(255 255 255 / 0.66);
+  --on-inverse-muted: rgb(255 255 255 / 0.5);
+
+  /*
+   * The focus indicator.
+   *
+   * It was emerald, which is the one thing emerald must not be: a focus ring appears on
+   * every interactive element on the site, so spending the trust colour on it guaranteed
+   * green everywhere. `--text` is ink on the light scheme and near-white on the dark one,
+   * which clears 1.4.11's 3:1 against either ground by a wide margin. `.on-inverse` flips it
+   * to paper, because an ink ring on a black band is an invisible ring.
+   */
+  --focus-ring: var(--text);
+
+  /* The splash's own curve, so the rest of the site moves the way the logo does. */
+  --ease-brand: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /*
+   * The site header's height, for anything else that wants to be sticky.
+   *
+   * `HeaderOffset` measures the real header and overwrites this, because the header is not
+   * one height: it grows when the search field wraps to its own row on a phone. This value
+   * is the fallback that holds before that runs and with JavaScript off, and it is the tall
+   * case deliberately, since clearing the header by too much is a gap and clearing it by too
+   * little hides the element underneath it.
+   */
+  --header-h: 8.5rem;
+
+  --surface-tile: #f2f3f5;
+  --shadow-card: 0 1px 2px rgb(11 12 14 / 0.04), 0 8px 24px -12px rgb(11 12 14 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(11 12 14 / 0.06), 0 18px 40px -16px rgb(11 12 14 / 0.22);
+
+  color-scheme: light;
+}
+
+/*
+ * A dark band, and everything inside it.
+ *
+ * Carries its own foreground tokens so the components on a band do not each have to know
+ * they are on one: a `SectionHead` or an icon inside `.on-inverse` resolves `--text` to
+ * paper and gets the right colour without a prop threading down to it.
+ */
+.on-inverse {
+  --text: var(--on-inverse);
+  --text-soft: var(--on-inverse-soft);
+  --text-muted: var(--on-inverse-muted);
+  --line: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.28);
+  --surface: var(--surface-inverse);
+  --surface-sunken: var(--surface-inverse-2);
+  --surface-raised: var(--surface-inverse-2);
+  --focus-ring: var(--brand-paper);
+  background: var(--surface-inverse);
+  color: var(--on-inverse);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0b0c0e;
+    --surface-sunken: #121417;
+    --surface-raised: #16191d;
+    --text: #f3f4f5;
+    --text-soft: #b9bec4;
+    --text-muted: #8d9399;
+    --line: #262a2f;
+    --color-emerald: #4bbd91;
+    --color-emerald-soft: #10241d;
+    --color-amber: #d9a441;
+    --color-amber-soft: #241d10;
+    --color-danger: #e8767c;
+    /*
+     * Dark mode flips which end of the accent is legible: the emerald is light enough that
+     * dark text sits on it correctly, and the washes become deep tints under light text.
+     * Redefining the roles rather than the raw colour is what keeps every component correct
+     * in both schemes without any component knowing which scheme is active.
+     */
+    --color-emerald-contrast: #08221a;
+    --color-emerald-strong: #6fd0aa;
+    --color-emerald-wash: var(--color-emerald-soft);
+    --color-amber-wash: var(--color-amber-soft);
+    --color-amber-ink: #f0c479;
+    --color-danger-wash: #2a1416;
+    --line-strong: #3a4046;
+    --color-accent: var(--text);
+    --color-accent-subtle: var(--surface-sunken);
+    /*
+     * The band goes deeper than the page rather than lighter.
+     *
+     * On the light scheme the inverse band is the logo's black against white and reads on
+     * its own. On the dark scheme the page is already #0b0c0e, so the same value would make
+     * the footer and the heroes disappear into it. Pure black steps down instead, which
+     * keeps the band a deliberate object and keeps white type at its maximum contrast. The
+     * bands also carry a hairline, because a one-step difference is a boundary you can lose.
+     */
+    --surface-inverse: #000000;
+    --surface-inverse-2: #0e1114;
+    --surface-tile: #1b1f23;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.55), 0 18px 40px -16px rgb(0 0 0 / 0.7);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface: #0b0c0e;
+  --surface-sunken: #121417;
+  --surface-raised: #16191d;
+  --text: #f3f4f5;
+  --text-soft: #b9bec4;
+  --text-muted: #8d9399;
+  --line: #262a2f;
+  --color-emerald: #4bbd91;
+  --color-emerald-soft: #10241d;
+  --color-amber: #d9a441;
+  --color-amber-soft: #241d10;
+  --color-danger: #e8767c;
+    /*
+   * Dark mode flips which end of the accent is legible: the emerald is light enough that
+   * dark text sits on it correctly, and the washes become deep tints under light text.
+   * Redefining the roles rather than the raw colour is what keeps every component correct
+   * in both schemes without any component knowing which scheme is active.
+   */
+  --color-emerald-contrast: #08221a;
+  --color-emerald-strong: #6fd0aa;
+  --color-emerald-wash: var(--color-emerald-soft);
+  --color-amber-wash: var(--color-amber-soft);
+  --color-amber-ink: #f0c479;
+  --color-danger-wash: #2a1416;
+  --line-strong: #3a4046;
+  --color-accent: var(--text);
+  --color-accent-subtle: var(--surface-sunken);
+  /* See the note in the `prefers-color-scheme` block above: deeper, not lighter. */
+  --surface-inverse: #000000;
+  --surface-inverse-2: #0e1114;
+  --surface-tile: #1b1f23;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.55), 0 18px 40px -16px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* WCAG 2.2 AA: focus must be visible and must not be clipped by an ancestor. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * The hero band and the brand mosaic scroll horizontally on a phone and snap.
+ *
+ * Snap, not autoplay. A banner that moves on its own takes the decision away from the
+ * reader and is the first thing to fail a reduced-motion audit; one that snaps under a
+ * thumb or an arrow key does the same commercial job and stays theirs to drive.
+ */
+.snap-rail {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+.snap-rail::-webkit-scrollbar {
+  display: none;
+}
+.snap-rail > * {
+  scroll-snap-align: start;
+}
+/* Only the banner's slides are a full viewport wide. A pill rail sizes to its content. */
+.snap-rail.snap-full > * {
+  flex: 0 0 100%;
+}
+
+/* The photograph lifts slightly inside its tile. The tile itself never moves. */
+.tile-media {
+  transition: transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@media (hover: hover) {
+  .group:hover .tile-media {
+    transform: scale(1.04);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Brand.
+ *
+ * The logo is black, white and one red. Two of those three the design system already
+ * had: `--color-ink` is the logo's ground and `--color-paper` its letterforms, which is
+ * why the mark drops into either colour scheme without a second file.
+ *
+ * There are two reds and they are never the same red (ADR-003).
+ *
+ *   --brand-dot     #e4483c  the logo's sphere, and the site's one ornament: the marker on
+ *                            an active nav item, the pip on a section head, the lit node on
+ *                            a progress track, the app icon. It says "FONEKIST".
+ *   --color-danger  #a3242b  a real failure, and only that. Darker, and deliberately so.
+ *
+ * The rule, in both directions: `--brand-dot` may never appear on an alert, an error
+ * message or a destructive control, and `--color-danger` may never appear on brand
+ * furniture. Two names is what stops a component reaching for one and getting the other.
+ *
+ * `--brand-dot` is 3.6:1 on paper, which is legal for a shape 3px or thicker and is NOT
+ * legal for text. It is 4.9:1 on the brand black, where it may carry text. Every use goes
+ * through that rule, and axe runs over both schemes to catch the ones that do not.
+ * ------------------------------------------------------------------------- */
+:root {
+  --brand-ink: #0b0c0e;
+  --brand-paper: #ffffff;
+  --brand-dot: #e4483c;
+
+  /*
+   * The brand red as a surface that carries text.
+   *
+   * `--brand-dot` is the logo's own value and it is 3.97:1 against white, so white type on
+   * it fails AA for anything under 24px: a nav label is 14px. This is the same role split
+   * emerald already has (`--color-emerald` / `-strong` / `-contrast`) and it exists for the
+   * same reason, which is that "the accent" and "an accent you can read on" are two
+   * different colours and letting a component pick one for both is how the contrast bugs
+   * got in last time.
+   *
+   * #d13a2d is 4.82:1 with white, so it clears AA with headroom, and 1.53:1 against
+   * `--color-danger`, which keeps it on the brand side of the two-red rule rather than
+   * drifting into the failure red.
+   *
+   * Use `--brand-dot` for shapes and `--brand-dot-strong` for anything with type on it.
+   */
+  --brand-dot-strong: #d13a2d;
+  --on-brand-dot: #ffffff;
+}
+
+/*
+ * The navigation pill.
+ *
+ * Every wayfinding link on the site takes the brand red on hover and on keyboard focus, so
+ * the thing under the cursor is unmistakably FONEKIST rather than a grey word going
+ * slightly darker. Focus gets it as well as hover, because a keyboard user should see the
+ * same affordance a pointer user does.
+ *
+ * `--brand-dot-strong` rather than `--brand-dot`: see the note above. White on the logo's
+ * literal red is 3.97:1 and these labels are 14px.
+ *
+ * `.nav-pill-flush` pulls the horizontal padding back out with a negative margin, for the
+ * vertical link columns in the footer where the pill has to grow sideways without shifting
+ * the text off the heading it sits under.
+ */
+.nav-pill {
+  border-radius: var(--radius-chip);
+  padding: 0.4rem 0.7rem;
+  transition:
+    background-color 200ms var(--ease-brand),
+    color 200ms var(--ease-brand);
+}
+
+.nav-pill-flush {
+  margin-inline: -0.7rem;
+}
+
+.nav-pill:hover,
+.nav-pill:focus-visible {
+  background: var(--brand-dot-strong);
+  color: var(--on-brand-dot);
+}
+
+/*
+ * Anything inside a hovered pill follows it to white: an icon, and the red dot that marks
+ * the current page, which would otherwise be red on red and disappear at the moment the
+ * customer is pointing at it.
+ */
+.nav-pill:hover .nav-pill-mark,
+.nav-pill:focus-visible .nav-pill-mark {
+  background: var(--on-brand-dot);
+}
+
+/*
+ * The eyebrow.
+ *
+ * Lifted straight off the logo's "B U Y  N O W ,  P A Y  L A T E R": monospaced, upper
+ * case, and tracked far wider than type normally is. It was already being hand-written in
+ * three places with the same four utilities; naming it means every small label on the site
+ * carries the logo's one typographic idea instead of approximating it.
+ *
+ * Colour is deliberately not set here. These labels sit on a white card in one place and a
+ * near-black hero band in another, and the contrast decision belongs to the call site.
+ */
+.brand-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  /* Tracking adds space after the last letter too, which visibly breaks left alignment. */
+  margin-right: -0.3em;
+}
+
+/* ---------------------------------------------------------------------------
+ * The opening splash: "Signal, Device, Access".
+ *
+ * See `src/components/brand/splash.tsx` for the concept and for why it is CSS only.
+ *
+ *   0     black. nothing.
+ *   40    a red point wakes off centre and pulses once
+ *   350   it becomes a sphere and travels to the middle
+ *   360   curves are dragged through the dark behind it
+ *   760   the curves snap a quarter turn into the wifi glyph's geometry
+ *   860   they straighten and close into the handset, which draws itself at the logo's lean
+ *   1080  the sphere drops onto the glass and lands. a shockwave crosses it
+ *   1200  four bars fill, one after another, 92ms apart
+ *   1560  the handset rushes the camera. the shop is revealed inside the glass and grows
+ *   1900  gone
+ *
+ * Only transform, opacity, stroke-dashoffset and two registered custom properties animate.
+ * ------------------------------------------------------------------------- */
+
+/*
+ * The dive needs numbers the browser can interpolate. An unregistered custom property
+ * animates as a string, which snaps rather than sweeps, so both are given a type. Where
+ * `@property` is unsupported neither sweeps, and the overlay still leaves on time because
+ * `fk-splash-out` is a separate animation on the container.
+ */
+@property --fk-zoom {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.brand-splash {
+  display: none;
+}
+
+:root[data-splash="on"] .brand-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  /*
+   * The overlay never intercepts anything. The page underneath is real, rendered and
+   * clickable from the first frame; the splash is laid over it, not gating it.
+   */
+  pointer-events: none;
+  /* One unit of the 400 unit stage, in pixels. The reveal is sized from this. */
+  --fk-stage: min(78vmin, 27rem);
+  --fk-unit: calc(var(--fk-stage) / 400);
+  animation:
+    fk-zoom-drive 340ms cubic-bezier(0.55, 0, 0.85, 0.35) 1560ms forwards,
+    fk-splash-out 1900ms linear forwards;
+}
+
+@keyframes fk-zoom-drive {
+  from {
+    --fk-zoom: 0;
+  }
+  to {
+    --fk-zoom: 16;
+  }
+}
+
+/* `visibility` at the end, so the finished overlay is gone from hit testing and painting
+ * rather than merely transparent. This is the guarantee the reveal is layered on top of. */
+@keyframes fk-splash-out {
+  0%,
+  99.9% {
+    visibility: visible;
+  }
+  100% {
+    visibility: hidden;
+  }
+}
+
+/*
+ * The ground.
+ *
+ * Almost black rather than black: #050505 keeps a little depth under the orb's light where
+ * pure #000 flattens it.
+ *
+ * The clip path is the whole viewport with a rectangular hole punched out of it, joined by a
+ * seam at the top left corner so it stays one polygon. The hole is the handset's glass, and
+ * driving it outward is what carries the viewer through the screen. It starts at zero size,
+ * so the glass is solid black for every beat before the dive.
+ *
+ * The trailing opacity fade is a safety net, not the effect: if the hole cannot animate, the
+ * ground still leaves rather than snapping away when the container hides.
+ */
+.brand-splash__ground {
+  position: absolute;
+  inset: 0;
+  background: #050505;
+  --fk-hw: calc(var(--fk-unit) * 50 * var(--fk-zoom));
+  --fk-hh: calc(var(--fk-unit) * 96 * var(--fk-zoom));
+  clip-path: polygon(
+    0% 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%,
+    0% 0%,
+    calc(50% - var(--fk-hw)) calc(50% - var(--fk-hh)),
+    calc(50% - var(--fk-hw)) calc(50% + var(--fk-hh)),
+    calc(50% + var(--fk-hw)) calc(50% + var(--fk-hh)),
+    calc(50% + var(--fk-hw)) calc(50% - var(--fk-hh)),
+    calc(50% - var(--fk-hw)) calc(50% - var(--fk-hh)),
+    0% 0%
+  );
+  animation: fk-ground-clear 150ms linear 1780ms forwards;
+}
+
+@keyframes fk-ground-clear {
+  to {
+    opacity: 0;
+  }
+}
+
+.brand-splash__stage {
+  position: relative;
+  width: var(--fk-stage);
+  height: var(--fk-stage);
+  overflow: visible;
+}
+
+/*
+ * The dive.
+ *
+ * Scales from 1 rather than from the hole's 0, so the handset keeps its size while the glass
+ * lights up, then leaves with it. The two curves meet at the end, and the small gap between
+ * them on the way reads as the bezel around the picture, which is what it is.
+ */
+.brand-splash__dive {
+  transform-origin: 200px 200px;
+  animation:
+    fk-dive 340ms cubic-bezier(0.55, 0, 0.85, 0.35) 1560ms forwards,
+    /* The handset is furniture once the shop is showing. It leaves before it can sit on
+       top of the page as a pair of enormous white bars. */
+    fk-dive-clear 190ms linear 1700ms forwards;
+}
+
+@keyframes fk-dive-clear {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fk-dive {
+  from {
+    transform: scale(1) rotate(0deg);
+  }
+  to {
+    /* Straightens as it arrives, the way a camera squares up to what it is entering. */
+    transform: scale(16) rotate(-16deg);
+  }
+}
+
+/* ---- Signal ------------------------------------------------------------- */
+
+/*
+ * The orb wakes off centre, pulses once, then travels in. `cubic-bezier` with a soft
+ * overshoot on the arrival, so it settles like an object rather than stopping like a value.
+ */
+.brand-splash__orb {
+  transform-box: view-box;
+  transform-origin: 200px 200px;
+  opacity: 0;
+  animation:
+    fk-orb 1180ms cubic-bezier(0.32, 0.9, 0.24, 1) 40ms forwards,
+    /*
+     * The orb is nearest the camera, so it passes first and it passes fastest. The blur is
+     * kept to a fraction of a unit deliberately: the parent is scaling by sixteen at this
+     * point and multiplies it, so a value that looks like nothing here is the streak.
+     */
+    fk-orb-escape 240ms cubic-bezier(0.5, 0, 1, 1) 1540ms forwards;
+}
+
+@keyframes fk-orb-escape {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-26px, -20px) scale(1.9);
+    filter: blur(1.4px);
+  }
+}
+
+@keyframes fk-orb {
+  /* wake, off centre and small, like a distant indicator */
+  0% {
+    opacity: 0;
+    transform: translate(58px, -46px) scale(0.26);
+  }
+  9% {
+    opacity: 1;
+    transform: translate(58px, -46px) scale(0.34);
+  }
+  /* the single pulse */
+  17% {
+    transform: translate(58px, -46px) scale(0.52);
+  }
+  26% {
+    transform: translate(58px, -46px) scale(0.36);
+  }
+  /* the travel */
+  62% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  /* held while the curves become the handset */
+  76% {
+    transform: translate(0, -6px) scale(1);
+  }
+  /* the drop onto the glass, landing hard */
+  93%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+/*
+ * The curves.
+ *
+ * Each is drawn along its own length, so they arrive as waves being pulled through the dark
+ * rather than as an icon fading up. The group then turns a quarter circle, which is the
+ * moment they stop being waves and become the glyph the logo uses for its O.
+ */
+.brand-splash__waves {
+  transform-box: view-box;
+  transform-origin: 200px 200px;
+  animation: fk-waves 1100ms cubic-bezier(0.16, 1, 0.3, 1) 300ms forwards;
+}
+
+@keyframes fk-waves {
+  0%,
+  40% {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  /*
+   * The snap into wifi geometry. The turn stops 16 degrees short of upright so the glyph
+   * ends up square to the handset it is about to be enclosed by, rather than upright inside
+   * a leaning device.
+   */
+  52% {
+    transform: rotate(-74deg) scale(1);
+    opacity: 1;
+  }
+  /*
+   * Absorbed rather than blown out. It used to scale up to 1.5 here, which pushed the curves
+   * straight through the outline that was drawing around them.
+   */
+  100% {
+    transform: rotate(-74deg) scale(0.86);
+    opacity: 0;
+  }
+}
+
+.brand-splash__arc {
+  fill: none;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  /* Every arc is normalised to 100 units by `pathLength`, so one dash rule sweeps them all
+     evenly regardless of how long the path actually is. */
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: fk-arc-draw 620ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fk-arc-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---- Device ------------------------------------------------------------- */
+
+/*
+ * The handset draws itself rather than appearing. 1.6 units against a 400 unit stage is
+ * roughly the 1 to 1.5 pixel line the brief asks for at the size this renders at.
+ */
+.brand-splash__shell,
+.brand-splash__glass {
+  fill: none;
+  stroke: #ffffff;
+}
+
+/* Weighted to sit with the logo's own line, which is a drawn outline rather than a hairline. */
+.brand-splash__shell {
+  stroke-width: 3.4;
+  stroke-dasharray: 700;
+  stroke-dashoffset: 700;
+  animation: fk-draw-shell 520ms cubic-bezier(0.16, 1, 0.3, 1) 860ms forwards;
+}
+
+@keyframes fk-draw-shell {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.brand-splash__glass {
+  opacity: 0;
+  stroke-width: 1;
+  stroke: rgb(255 255 255 / 0.34);
+  animation: fk-fade-in 300ms ease-out 1180ms forwards;
+}
+
+.brand-splash__earpiece {
+  fill: rgb(255 255 255 / 0.5);
+  opacity: 0;
+  animation: fk-fade-in 260ms ease-out 1120ms forwards;
+}
+
+@keyframes fk-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The landing.
+ *
+ * One ring crossing the glass, clipped to it. It is the only feedback that the orb hit
+ * something, so it is quick and it is not repeated.
+ */
+.brand-splash__shock {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: fk-shock 520ms cubic-bezier(0.16, 1, 0.3, 1) 1090ms forwards;
+}
+
+@keyframes fk-shock {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.2);
+    stroke-width: 3;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(11);
+    stroke-width: 0.6;
+  }
+}
+
+/* ---- Kist --------------------------------------------------------------- */
+
+/*
+ * The bars fill one after another, never together. Sequence is the whole point: it is the
+ * shape of paying in instalments and arriving complete, in the bars the logo already carries
+ * inside its E.
+ */
+.brand-splash__bar {
+  fill: #ffffff;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  opacity: 0;
+  animation: fk-bar 260ms cubic-bezier(0.2, 1.3, 0.35, 1) forwards;
+}
+
+@keyframes fk-bar {
+  from {
+    opacity: 0;
+    transform: scaleY(0.1);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* ---- Reduced motion ------------------------------------------------------ */
+
+/*
+ * The finished frame, held, then faded.
+ *
+ * Not switched off entirely, because the global reduced-motion reset collapses every
+ * animation to 0.01ms, which would flash the black overlay for a single frame. That is a
+ * worse thing to show someone than a still image. So every beat resolves to its end state
+ * and the only change is one opacity fade, the transition WCAG 2.3.3 leaves available. The
+ * `!important` beats that reset; the higher specificity here wins regardless of order.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-splash="on"] .brand-splash {
+    animation: fk-splash-quiet 1000ms linear forwards !important;
+  }
+
+  :root[data-splash="on"] .brand-splash__ground {
+    animation: none !important;
+    clip-path: none;
+  }
+
+  :root[data-splash="on"] .brand-splash__dive,
+  :root[data-splash="on"] .brand-splash__orb,
+  :root[data-splash="on"] .brand-splash__shell,
+  :root[data-splash="on"] .brand-splash__glass,
+  :root[data-splash="on"] .brand-splash__earpiece,
+  :root[data-splash="on"] .brand-splash__bar {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+    stroke-dashoffset: 0;
+  }
+
+  /* The two beats with no still equivalent simply do not appear. */
+  :root[data-splash="on"] .brand-splash__waves,
+  :root[data-splash="on"] .brand-splash__shock {
+    animation: none !important;
+    opacity: 0;
+  }
+
+  @keyframes fk-splash-quiet {
+    0%,
+    58% {
+      opacity: 1;
+      visibility: visible;
+    }
+    99.9% {
+      opacity: 0;
+      visibility: visible;
+    }
+    100% {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+}

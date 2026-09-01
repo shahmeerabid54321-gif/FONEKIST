@@ -1,0 +1,446 @@
+{
+  "generatedBy": "pnpm --filter commerce media:photos",
+  "warning": "Development stand-ins. Each shows a representative device, not the unit being sold. Replace with photography of real stock before launch.",
+  "files": [
+    {
+      "file": "/media/editorial/story-audio.jpg",
+      "source": "https://images.unsplash.com/photo-1599669454699-248893623440?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/editorial/category-laptops.jpg",
+      "source": "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/editorial/category-smartphones.jpg",
+      "source": "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/editorial/category-audio.jpg",
+      "source": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/editorial/hero-flagship.jpg",
+      "source": "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/editorial/hero-installments.jpg",
+      "source": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/editorial/hero-value.jpg",
+      "source": "https://images.unsplash.com/photo-1621330396173-e41b1cafd17f?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/editorial/brand-feature.jpg",
+      "source": "https://images.unsplash.com/photo-1583573636246-18cb2246697f?w=2000&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/macbook-air-15-m3/01.jpg",
+      "source": "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/macbook-air-15-m3/02.jpg",
+      "source": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/macbook-air-15-m3/03.jpg",
+      "source": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/dell-xps-13-9340/01.jpg",
+      "source": "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/dell-xps-13-9340/02.jpg",
+      "source": "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/asus-rog-zephyrus-g14/01.jpg",
+      "source": "https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/asus-rog-zephyrus-g14/02.jpg",
+      "source": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/lenovo-thinkpad-x1-carbon-g12/01.jpg",
+      "source": "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/lenovo-thinkpad-x1-carbon-g12/02.jpg",
+      "source": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/hp-pavilion-plus-14/01.jpg",
+      "source": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/hp-pavilion-plus-14/02.jpg",
+      "source": "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-s24-ultra/01.jpg",
+      "source": "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-s24-ultra/02.jpg",
+      "source": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-15-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-15-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-15-pro/03.jpg",
+      "source": "https://images.unsplash.com/photo-1511385348-a52b4a160dc2?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/google-pixel-8/01.jpg",
+      "source": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/google-pixel-8/02.jpg",
+      "source": "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/xiaomi-redmi-note-13-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/xiaomi-redmi-note-13-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1523206489230-c012c64b2b48?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-a55/01.jpg",
+      "source": "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-a55/02.jpg",
+      "source": "https://images.unsplash.com/photo-1511385348-a52b4a160dc2?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/sony-wh-1000xm5/01.jpg",
+      "source": "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/sony-wh-1000xm5/02.jpg",
+      "source": "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/sony-wh-1000xm6/01.jpg",
+      "source": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/sony-wh-1000xm6/02.jpg",
+      "source": "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-airpods-pro-2/01.jpg",
+      "source": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-airpods-pro-2/02.jpg",
+      "source": "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/bose-quietcomfort-ultra/01.jpg",
+      "source": "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/bose-quietcomfort-ultra/02.jpg",
+      "source": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-buds3-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-buds3-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/jbl-tune-770nc/01.jpg",
+      "source": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/jbl-tune-770nc/02.jpg",
+      "source": "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/anker-soundcore-space-one/01.jpg",
+      "source": "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/anker-soundcore-space-one/02.jpg",
+      "source": "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-s24/01.jpg",
+      "source": "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-s24/02.jpg",
+      "source": "https://images.unsplash.com/photo-1583573636246-18cb2246697f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-s24/03.jpg",
+      "source": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-a35/01.jpg",
+      "source": "https://images.unsplash.com/photo-1583573636246-18cb2246697f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-a35/02.jpg",
+      "source": "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-a15/01.jpg",
+      "source": "https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/samsung-galaxy-a15/02.jpg",
+      "source": "https://images.unsplash.com/photo-1583573636246-18cb2246697f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-15/01.jpg",
+      "source": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-15/02.jpg",
+      "source": "https://images.unsplash.com/photo-1591337676887-a217a6970a8a?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-15/03.jpg",
+      "source": "https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-13/01.jpg",
+      "source": "https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/apple-iphone-13/02.jpg",
+      "source": "https://images.unsplash.com/photo-1607936854279-55e8a4c64888?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/xiaomi-14t-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1621330396173-e41b1cafd17f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/xiaomi-14t-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/redmi-note-14-pro-plus/01.jpg",
+      "source": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/redmi-note-14-pro-plus/02.jpg",
+      "source": "https://images.unsplash.com/photo-1621330396173-e41b1cafd17f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/redmi-13c/01.jpg",
+      "source": "https://images.unsplash.com/photo-1512054502232-10a0a035d672?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/redmi-13c/02.jpg",
+      "source": "https://images.unsplash.com/photo-1621330396173-e41b1cafd17f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/poco-x6-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1567581935884-3349723552ca?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/poco-x6-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/infinix-note-40-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1546054454-aa26e2b734c7?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/infinix-note-40-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1544866092-1935c5ef2a8f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/infinix-hot-50-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1544866092-1935c5ef2a8f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/infinix-hot-50-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1546054454-aa26e2b734c7?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/tecno-camon-30/01.jpg",
+      "source": "https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/tecno-camon-30/02.jpg",
+      "source": "https://images.unsplash.com/photo-1523206489230-c012c64b2b48?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/tecno-spark-20-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1523206489230-c012c64b2b48?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/tecno-spark-20-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/vivo-v40/01.jpg",
+      "source": "https://images.unsplash.com/photo-1605236453806-6ff36851218e?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/vivo-v40/02.jpg",
+      "source": "https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/vivo-y28/01.jpg",
+      "source": "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/vivo-y28/02.jpg",
+      "source": "https://images.unsplash.com/photo-1605236453806-6ff36851218e?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/oppo-reno12/01.jpg",
+      "source": "https://images.unsplash.com/photo-1607936854279-55e8a4c64888?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/oppo-reno12/02.jpg",
+      "source": "https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/oppo-a3-pro/01.jpg",
+      "source": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/oppo-a3-pro/02.jpg",
+      "source": "https://images.unsplash.com/photo-1607936854279-55e8a4c64888?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/realme-12-pro-plus/01.jpg",
+      "source": "https://images.unsplash.com/photo-1573148195900-7845dcb9b127?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/realme-12-pro-plus/02.jpg",
+      "source": "https://images.unsplash.com/photo-1546054454-aa26e2b734c7?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/realme-c65/01.jpg",
+      "source": "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/realme-c65/02.jpg",
+      "source": "https://images.unsplash.com/photo-1573148195900-7845dcb9b127?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/google-pixel-8a/01.jpg",
+      "source": "https://images.unsplash.com/photo-1598965402089-897ce52e8355?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/google-pixel-8a/02.jpg",
+      "source": "https://images.unsplash.com/photo-1533228100845-08145b01de14?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/oneplus-nord-4/01.jpg",
+      "source": "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    },
+    {
+      "file": "/media/products/oneplus-nord-4/02.jpg",
+      "source": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1200&h=1200&fit=crop&q=80&fm=jpg",
+      "note": "Stand-in photograph of a representative device. Attribution unresolved; replace before launch."
+    }
+  ]
+}
