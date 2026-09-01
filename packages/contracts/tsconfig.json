@@ -1,0 +1,13 @@
+{
+  "extends": "@pk/config/tsconfig.node.json",
+  "compilerOptions": {
+    // CommonJS output: the Medusa app compiles as CJS and must be able to require() this
+    // package. Next.js consumes CJS packages without any extra configuration.
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts", "dist"]
+}
