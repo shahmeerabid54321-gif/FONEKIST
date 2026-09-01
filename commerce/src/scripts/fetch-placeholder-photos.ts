@@ -75,7 +75,7 @@ export default async function fetchPlaceholderPhotos({ container }: ExecArgs) {
   // Development assets, not uploads: they live in the storefront's public directory rather
   // than behind the CDN path, which would imply they came from object storage.
   const mediaRoot =
-    process.env.PLACEHOLDER_MEDIA_DIR ?? path.resolve(process.cwd(), "../storefront/public/media");
+    process.env.PLACEHOLDER_MEDIA_DIR ?? path.resolve(process.cwd(), "../public/media");
 
   const productsDir = path.join(mediaRoot, "products");
   const editorialDir = path.join(mediaRoot, "editorial");
@@ -159,6 +159,8 @@ export default async function fetchPlaceholderPhotos({ container }: ExecArgs) {
 
     // Real photography uploaded in the admin outranks anything here (ADR-012).
     if (!isOurs(product.thumbnail)) continue;
+    // Do not rewrite an already-linked product on every free-instance restart.
+    if (product.thumbnail === urls[0]) continue;
 
     await updateProductsWorkflow(container).run({
       input: {
@@ -186,7 +188,7 @@ export default async function fetchPlaceholderPhotos({ container }: ExecArgs) {
 
   // The search index stores the thumbnail, so it has to be rebuilt or every card keeps the
   // image it had before this ran.
-  const { indexed } = await reindexProducts(container);
+  const { indexed } = linked > 0 ? await reindexProducts(container) : { indexed: 0 };
 
   logger.info(
     `Product photography: ${downloaded} downloaded, ${cached} already present, ` +

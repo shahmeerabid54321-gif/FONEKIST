@@ -1,6 +1,7 @@
 import type { ExecArgs } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 
+import fetchPlaceholderPhotos from "./fetch-placeholder-photos";
 import seed from "./seed";
 
 /**
@@ -23,9 +24,13 @@ export default async function ensureSeeded(args: ExecArgs) {
   if (!token) {
     logger.info("FONEKIST catalog is not seeded; running the idempotent seed now.");
     await seed(args);
-    return;
+  } else {
+    logger.info("FONEKIST catalog is already seeded.");
+    logger.info(`FONEKIST publishable key: ${token}`);
   }
 
-  logger.info("FONEKIST catalog is already seeded.");
-  logger.info(`FONEKIST publishable key: ${token}`);
+  // The seed creates catalog records, while the photographs are static storefront assets.
+  // Link those paths after seeding (and repair an older deployment that was seeded before
+  // this step existed), then refresh the derived search documents used by listing cards.
+  await fetchPlaceholderPhotos(args);
 }
