@@ -43,6 +43,15 @@ const config: NextConfig = {
   agentRules: false,
 
   images: {
+    /*
+     * Product photography is already stored as web-sized JPGs in `public/media`. Running
+     * every tile through Next's on-demand transformer creates a 24-request CPU spike on
+     * Render's 0.1-CPU free instance and can make the whole storefront time out. Serving
+     * the same committed files directly keeps the visual output intact and makes catalog
+     * pages cheap enough for the free tier.
+     */
+    unoptimized: true,
+
     // Newest-first, so browsers get the smallest file they can decode (PERF-002).
     formats: ["image/avif", "image/webp"],
 
