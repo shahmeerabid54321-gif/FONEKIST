@@ -32,9 +32,20 @@ describe("generatePlans", () => {
     }
   });
 
+  it("never derives a plan with no schedule", () => {
+    // A Rs 0 advance or a Rs 0 monthly is not a cheap plan, it is a plan that cannot be
+    // paid. The write path refuses one; the generator must never produce one either.
+    for (const price of [40_000, 124_999, 424_999]) {
+      for (const plan of generatePlans(price)) {
+        expect(plan.advance_pkr).toBeGreaterThan(0);
+        expect(plan.monthly_pkr).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("holds at awkward prices too", () => {
     // A price that divides badly is where rounding bugs live.
-    for (const price of [40_001, 46_999, 99_999, 424_999]) {
+    for (const price of [40_000, 40_001, 46_999, 99_999, 424_999]) {
       for (const plan of generatePlans(price)) {
         expect(plan.total_payable_pkr).toBe(plan.advance_pkr + plan.monthly_pkr * plan.tenure_months);
         expect(plan.total_payable_pkr).toBeGreaterThanOrEqual(price);

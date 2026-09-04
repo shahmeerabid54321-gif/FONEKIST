@@ -36,6 +36,15 @@ const SOURCE =
   resolve(ROOT, "..", "WEBSITE DESIGN", "packages", "contracts", "src");
 
 /** The closed list of vendored files. Adding a dependency on upstream means adding it here. */
+/*
+ * `pricing/` is deliberately absent from this list.
+ *
+ * It holds the advance and markup shares an installment schedule is authored from. Those
+ * are backend authoring inputs, never part of an offer: the storefront is shown a cash
+ * price, an advance, a monthly figure and a total, and nothing it can import should let it
+ * render, derive or leak a percentage (ADR-025, ADR-028). Leaving the directory out of this
+ * allow-list is what makes that a build-time fact rather than a convention.
+ */
 const FILES = [
   "errors/codes.ts",
   "errors/app-error.ts",

@@ -9,6 +9,7 @@ import { INSTALLMENTS_MODULE } from "../modules/installments";
 import type InstallmentsService from "../modules/installments/service";
 import { SEARCH_MODULE } from "../modules/search";
 import type SearchIndexService from "../modules/search/service";
+import { pkrPriceOf } from "./variant-price";
 import { projectAttributeValues, type TypedAttributeValue } from "./attribute-projection";
 
 /**
@@ -87,11 +88,6 @@ function availableQuantity(variant: GraphProduct["variants"][number]): number | 
   }, 0);
 }
 
-function pkrPrice(variant: GraphProduct["variants"][number]): number {
-  const price = variant.prices.find((entry) => entry.currency_code.toLowerCase() === "pkr");
-  return price?.amount ?? 0;
-}
-
 /**
  * The variant a listing card shows: the cheapest one actually in stock.
  *
@@ -105,7 +101,7 @@ function cardVariant(product: GraphProduct): GraphProduct["variants"][number] | 
     return quantity === null || quantity > 0 || variant.allow_backorder;
   });
   const pool = sellable.length > 0 ? sellable : product.variants;
-  return [...pool].sort((a, b) => pkrPrice(a) - pkrPrice(b))[0];
+  return [...pool].sort((a, b) => pkrPriceOf(a) - pkrPriceOf(b))[0];
 }
 
 export async function buildSearchDocuments(
@@ -167,7 +163,7 @@ export async function buildSearchDocuments(
   for (const product of products) {
     const variant = cardVariant(product);
     const quantity = variant ? availableQuantity(variant) : 0;
-    const price = variant ? pkrPrice(variant) : 0;
+    const price = variant ? pkrPriceOf(variant) : 0;
 
     const compareAt = Number(variant?.metadata?.compare_at_pkr ?? 0) || null;
 

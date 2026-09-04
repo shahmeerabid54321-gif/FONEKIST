@@ -1,11 +1,16 @@
 import { randomBytes } from "node:crypto";
 import { MedusaError, MedusaService } from "@medusajs/framework/utils";
 import {
+  MINIMUM_PLAN_PRICE_PKR,
   canTransitionInstallment,
+  deriveInstallmentPlans,
   holdsReservation,
   installmentDisclosure,
   isPlanOfferable,
   maskCnic,
+  resolveInstallmentRules,
+  type InstallmentRule,
+  type InstallmentRuleScope,
   type InstallmentState,
 } from "@pk/contracts";
 import {
@@ -13,6 +18,7 @@ import {
   InstallmentAuditEvent,
   InstallmentDocument,
   InstallmentPlan,
+  InstallmentRule as InstallmentRuleModel,
 } from "./models";
 
 /**
@@ -37,6 +43,14 @@ export interface PlanRow {
   active: boolean;
   active_from: Date | null;
   active_until: Date | null;
+  sort_order: number;
+}
+
+export interface RuleRow extends InstallmentRule {
+  id: string;
+  scope: InstallmentRuleScope;
+  scope_id: string | null;
+  updated_by: string | null;
   sort_order: number;
 }
 
@@ -83,6 +97,7 @@ class InstallmentsService extends MedusaService({
   InstallmentApplication,
   InstallmentDocument,
   InstallmentAuditEvent,
+  InstallmentRule: InstallmentRuleModel,
 }) {
   /* ------------------------------------------------------------------------ Plans */
 
@@ -120,6 +135,10 @@ class InstallmentsService extends MedusaService({
     const result: Record<string, { min_monthly_pkr: number; min_advance_pkr: number }> = {};
     for (const plan of plans) {
       if (!isPlanOfferable(plan, now)) continue;
+      // A zero here would become "from Rs 0 a month" on a card while the PDP, which filters
+      // on the same arithmetic, showed nothing at all. Two surfaces disagreeing about a
+      // price is worse than one of them being absent.
+      if (plan.monthly_pkr <= 0) continue;
       const current = result[plan.product_id];
       if (!current || plan.monthly_pkr < current.min_monthly_pkr) {
         result[plan.product_id] = {
@@ -158,6 +177,14 @@ class InstallmentsService extends MedusaService({
     if (!Number.isInteger(input.monthly_pkr) || !Number.isInteger(input.advance_pkr)) {
       throw new MedusaError(MedusaError.Types.INVALID_DATA, "Amounts must be whole rupees.");
     }
+    // `installmentPlanSchema` has always declared this refinement; the write path never
+    // enforced it. A Rs 0 monthly is not a free phone, it is a plan with no schedule.
+    if (input.monthly_pkr <= 0 || input.advance_pkr <= 0) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "A plan needs an advance and a monthly amount above zero.",
+      );
+    }
 
     if (input.id) {
       const { id, ...rest } = input;
@@ -165,8 +192,181 @@ class InstallmentsService extends MedusaService({
       return (await this.retrieveInstallmentPlan(id)) as unknown as PlanRow;
     }
 
-    const created = await this.createInstallmentPlans(input as never);
+    // `id` is stripped rather than passed through as undefined: a create carrying an
+    // explicit undefined primary key is a row whose id depends on how the ORM feels about
+    // the difference between absent and undefined.
+    const { id: _unset, ...fields } = input;
+    const created = await this.createInstallmentPlans(fields as never);
     return (Array.isArray(created) ? created[0] : created) as unknown as PlanRow;
+  }
+
+  /* ------------------------------------------------------------------------ Rules */
+
+  /**
+   * The schedule in force for one variant, tenure by tenure.
+   *
+   * One query rather than three: the three scopes are a small, bounded set of rows, and
+   * three round trips to resolve a single product page would be three round trips more
+   * than the data justifies.
+   */
+  async resolveRulesFor(productId: string, variantId: string): Promise<InstallmentRule[]> {
+    const rows = (await this.listInstallmentRules(
+      {
+        $or: [
+          { scope: "global" },
+          { scope: "product", scope_id: productId },
+          { scope: "variant", scope_id: variantId },
+        ],
+      },
+      { take: null },
+    )) as unknown as RuleRow[];
+
+    const at = (scope: InstallmentRuleScope): RuleRow[] =>
+      rows.filter((row) => row.scope === scope);
+
+    return resolveInstallmentRules({
+      global: at("global"),
+      product: at("product"),
+      variant: at("variant"),
+    });
+  }
+
+  /** The rows authored at one scope, without any inheritance applied. */
+  async listRulesAt(scope: InstallmentRuleScope, scopeId: string | null): Promise<RuleRow[]> {
+    const rows = (await this.listInstallmentRules(
+      { scope, scope_id: scopeId },
+      { take: null },
+    )) as unknown as RuleRow[];
+    return rows.sort((a, b) => a.tenure_months - b.tenure_months);
+  }
+
+  /**
+   * Replaces the schedule authored at one scope.
+   *
+   * Replace rather than merge: a schedule is read as a whole, and a partial write would
+   * leave a tenure the admin thought they had removed still in force. Tenures absent from
+   * the payload are cleared, so the scope falls back to inheriting them.
+   */
+  async upsertRules(
+    scope: InstallmentRuleScope,
+    scopeId: string | null,
+    rules: readonly InstallmentRule[],
+    actor: string,
+  ): Promise<RuleRow[]> {
+    const existing = await this.listRulesAt(scope, scopeId);
+    const byTenure = new Map(existing.map((row) => [row.tenure_months, row]));
+
+    for (const [index, rule] of rules.entries()) {
+      const current = byTenure.get(rule.tenure_months);
+      const data = {
+        scope,
+        scope_id: scopeId,
+        tenure_months: rule.tenure_months,
+        advance_bps: rule.advance_bps,
+        markup_bps: rule.markup_bps,
+        active: rule.active,
+        updated_by: actor,
+        sort_order: index,
+      };
+
+      if (current) {
+        await this.updateInstallmentRules({ selector: { id: current.id }, data } as never);
+        byTenure.delete(rule.tenure_months);
+      } else {
+        await this.createInstallmentRules(data as never);
+      }
+    }
+
+    // Whatever the payload did not mention is no longer authored here.
+    const stale = [...byTenure.values()].map((row) => row.id);
+    if (stale.length > 0) await this.deleteInstallmentRules(stale);
+
+    return this.listRulesAt(scope, scopeId);
+  }
+
+  /**
+   * Removes every rule authored at one scope, so it inherits again.
+   *
+   * A hard delete, unlike a withdrawn plan: nothing references a rule row, and an
+   * "inactive" rule already means something else here — this tenure is not offered — so
+   * deactivating would say the opposite of what the admin asked for.
+   */
+  async clearRules(scope: InstallmentRuleScope, scopeId: string | null): Promise<number> {
+    const existing = await this.listRulesAt(scope, scopeId);
+    if (existing.length > 0) await this.deleteInstallmentRules(existing.map((row) => row.id));
+    return existing.length;
+  }
+
+  /**
+   * Rewrites one variant's plans from the schedule in force.
+   *
+   * Reconciled in place, keyed on tenure, for one reason: a plan id is a live reference. It
+   * sits in the URL of an application in progress and in `installment_application.plan_id`
+   * on every application already submitted. Deleting and recreating would break both.
+   *
+   * A tenure that is no longer offered is deactivated, never deleted. `isPlanOfferable`
+   * hides an inactive plan from the store API, the PDP and the search index, so the offer
+   * is gone; but the row is still retrievable, which is what lets the application route
+   * answer "That plan is no longer available" instead of faulting, and lets the reservation
+   * and purge jobs keep working against applications that reference it.
+   */
+  async regeneratePlansFor(
+    productId: string,
+    variantId: string,
+    cashPricePkr: number,
+  ): Promise<{ created: number; updated: number; deactivated: number }> {
+    const existing = (await this.listInstallmentPlans(
+      { variant_id: variantId },
+      { take: null },
+    )) as unknown as PlanRow[];
+    const byTenure = new Map(existing.map((plan) => [plan.tenure_months, plan]));
+
+    // Below the floor there is no offer at all, and any plan authored when the price was
+    // higher has to come off the page.
+    const derived =
+      Number.isInteger(cashPricePkr) && cashPricePkr >= MINIMUM_PLAN_PRICE_PKR
+        ? deriveInstallmentPlans(cashPricePkr, await this.resolveRulesFor(productId, variantId))
+        : [];
+
+    let created = 0;
+    let updated = 0;
+    let deactivated = 0;
+
+    for (const plan of derived) {
+      const current = byTenure.get(plan.tenure_months);
+      await this.upsertPlan({
+        id: current?.id,
+        product_id: productId,
+        variant_id: variantId,
+        label: plan.label,
+        advance_pkr: plan.advance_pkr,
+        monthly_pkr: plan.monthly_pkr,
+        tenure_months: plan.tenure_months,
+        total_payable_pkr: plan.total_payable_pkr,
+        cash_price_pkr: plan.cash_price_pkr,
+        active: true,
+        active_from: current?.active_from ?? null,
+        active_until: current?.active_until ?? null,
+        sort_order: plan.sort_order,
+      });
+      if (current) {
+        updated += 1;
+        byTenure.delete(plan.tenure_months);
+      } else {
+        created += 1;
+      }
+    }
+
+    for (const withdrawn of byTenure.values()) {
+      if (!withdrawn.active) continue;
+      await this.updateInstallmentPlans({
+        selector: { id: withdrawn.id },
+        data: { active: false },
+      } as never);
+      deactivated += 1;
+    }
+
+    return { created, updated, deactivated };
   }
 
   /* ----------------------------------------------------------------- Applications */

@@ -26,7 +26,10 @@ The plan this is being built from lives at
   cent, on one screen, before anyone can apply (INST-003, ADR-025). This is the whole point
   of the storefront.
 - **No interest rate, anywhere.** The offer is a deferred-payment sale of goods, not a loan
-  (ADR-025). No rate in the model, the API or the copy.
+  (ADR-025). No rate in the model, the API or the copy. Schedules are *derived* from advance
+  and markup shares stored in `installment_rule` (ADR-028); those are backend authoring
+  inputs, they live in `packages/contracts/src/pricing/` which `sync:contracts` deliberately
+  does not vendor, and they may never appear in a `/store/*` response or in `src/`.
 - **A CNIC lives in exactly one table.** Never in a log, a search document, a notification,
   an audit row or an analytics payload; masked in every list view; every unmasked read
   audited (ADR-024).

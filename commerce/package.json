@@ -19,7 +19,8 @@
     "test:contract": "TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit --passWithNoTests --testPathPattern=contract",
     "test:integration": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
     "media:photos": "medusa exec ./src/scripts/fetch-placeholder-photos.ts",
-    "installments:jobs": "medusa exec ./src/scripts/run-installment-jobs.ts"
+    "installments:jobs": "medusa exec ./src/scripts/run-installment-jobs.ts",
+    "installments:regenerate": "medusa exec ./src/scripts/regenerate-installment-plans.ts"
   },
   "dependencies": {
     "@medusajs/admin-sdk": "2.19.0",
