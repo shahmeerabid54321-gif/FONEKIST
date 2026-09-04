@@ -38,6 +38,22 @@ const config: NextConfig = {
 
   typedRoutes: true,
 
+  /*
+   * Static generation, sized for the machine that actually runs it.
+   *
+   * Next sizes its prerender pool from the reported core count, which on Render's free
+   * instance meant 25 worker processes fighting over 0.1 of a CPU for 22 pages. Pages that
+   * do no data fetching at all, `/_not-found` among them, then missed the 60 second budget
+   * and failed the build. One worker builds them in sequence instead: slower on a big
+   * machine, and the only thing that finishes on a small one.
+   *
+   * The longer budget is for the backend rather than the CPU. Every page renders the header
+   * and footer, both of which read the brand list, and a free-tier backend that is cold or
+   * mid-redeploy can spend the full 8 second client timeout before the page gives up on it.
+   */
+  experimental: { cpus: 1 },
+  staticPageGenerationTimeout: 180,
+
   // FONEKIST documents its own conventions in CLAUDE.md; Next's generated agent files
   // would duplicate and contradict them.
   agentRules: false,
