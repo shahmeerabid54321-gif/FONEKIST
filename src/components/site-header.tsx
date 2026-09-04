@@ -46,22 +46,34 @@ export async function SiteHeader() {
           <SearchBox />
         </div>
 
-        <nav aria-label="Main" className="ml-auto hidden lg:block">
+        {/*
+          Visible at every width.
+
+          This was `hidden lg:block`, so on a phone the header offered a search field and a
+          cart button and nothing else: no Phones, no Track order, and no Installments. In a
+          market that shops on a handset that hid the site's entire proposition from most of
+          the people it was written for. Below `lg` it becomes a scroll rail on its own row,
+          the same pattern the brand list below it already uses.
+        */}
+        <nav
+          aria-label="Main"
+          className="order-4 w-full lg:order-none lg:ml-auto lg:w-auto"
+        >
           {/*
             The installments link was the site's only emerald nav item, which spent the trust
             colour on wayfinding (ADR-003). It is distinguished by weight and by its icon now,
             which is what ADR-001 asked for in the first place: anything needing emphasis
             earns it through weight, size or space rather than by borrowing the accent.
           */}
-          <ul className="flex items-center gap-x-1 text-sm font-medium">
-            <li>
+          <ul className="snap-rail items-center gap-x-1 text-sm font-medium lg:overflow-x-visible">
+            <li className="shrink-0">
               <NavLink href="/phones" matchNested>
                 <IconHandset />
                 Phones
               </NavLink>
             </li>
             {features.installments && (
-              <li>
+              <li className="shrink-0">
                 <NavLink href="/installments" matchNested>
                   <IconCalendar />
                   Installments
@@ -69,14 +81,14 @@ export async function SiteHeader() {
               </li>
             )}
             {features.comparison && (
-              <li>
+              <li className="shrink-0">
                 <NavLink href="/compare">
                   <IconCompare />
                   Compare
                 </NavLink>
               </li>
             )}
-            <li>
+            <li className="shrink-0">
               <NavLink href="/track">
                 <IconTruck />
                 Track order

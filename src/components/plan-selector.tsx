@@ -16,6 +16,11 @@ import { IconCalendar } from "./icons";
  * figure as the price of the handset, which is the trick this storefront was built to
  * avoid: it makes an expensive phone look cheap by hiding what it costs.
  *
+ * It opens on installments only when the customer asked for that: a card that said "from
+ * Rs X a month", a filtered listing, or the installments landing page all arrive with
+ * `?pay=installments`. That is a choice they made, not a default we chose for them, and the
+ * cash price is still the first figure on the panel.
+ *
  * Selecting a plan always renders the full disclosure block underneath it. There is no
  * state in which a monthly figure is on screen without the total beside it (INST-004).
  */
@@ -24,13 +29,15 @@ export function PlanSelector({
   cashPrice,
   compareAt,
   plans,
+  initialMode = "cash",
 }: {
   variantId: string;
   cashPrice: number;
   compareAt: number | null;
   plans: PlanView[];
+  initialMode?: "cash" | "installments";
 }) {
-  const [mode, setMode] = useState<"cash" | "installments">("cash");
+  const [mode, setMode] = useState<"cash" | "installments">(initialMode);
   const [selectedId, setSelectedId] = useState<string | null>(plans[0]?.id ?? null);
 
   if (plans.length === 0) {
@@ -70,9 +77,23 @@ export function PlanSelector({
         {mode === "cash" ? (
           <>
             <Price amount={cashPrice} compareAt={compareAt} size="large" />
-            <p className="mt-2 text-sm text-[var(--text-soft)]">
-              Or from {formatPkr(cheapest.monthly_pkr)} a month on an installment plan.
-            </p>
+            {/*
+              A control, not a sentence.
+
+              This line was the only place on the page that mentioned the monthly figure in
+              cash mode, and it was inert text sitting under a tab most people never
+              pressed. The whole application flow was two interactions behind a toggle whose
+              other half looked like prose. It switches the panel now, so the cheapest
+              monthly figure is itself the way in to the plans and the full disclosure.
+            */}
+            <button
+              type="button"
+              onClick={() => setMode("installments")}
+              className="nav-pill nav-pill-flush mt-2 inline-flex min-h-[44px] items-center gap-2 text-sm font-medium text-[var(--text-soft)]"
+            >
+              <IconCalendar />
+              Or from {formatPkr(cheapest.monthly_pkr)} a month. See installment plans.
+            </button>
           </>
         ) : (
           <>

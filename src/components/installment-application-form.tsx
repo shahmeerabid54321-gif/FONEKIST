@@ -6,8 +6,10 @@ import { submitApplicationAction, type ApplicationResult } from "@/app/actions/i
 import type { PlanView } from "@/lib/installments";
 import { InstallmentDisclosure } from "./installment-disclosure";
 import { DocumentUpload, type UploadedDocument } from "./document-upload";
+import { applicationChatUrl } from "@/lib/whatsapp";
 import { Button, InlineAlert, PhoneField, SelectField, TextField } from "./ui";
 import { BrandPip, Meter } from "./brand/signal-arc";
+import { IconChat } from "./icons";
 
 /**
  * The credit application.
@@ -120,6 +122,8 @@ export function InstallmentApplicationForm({
   const totalSteps = SECTIONS.length + 2;
 
   if (state?.ok) {
+    const chatUrl = state.reference ? applicationChatUrl(state.reference, plan) : null;
+
     return (
       <div className="rounded-[var(--radius-card)] border border-[var(--color-emerald)] bg-[var(--color-emerald-wash)] p-8">
         <h2 className="text-xl font-semibold text-[var(--text)]">We have your application</h2>
@@ -137,12 +141,44 @@ export function InstallmentApplicationForm({
             Held until {new Date(state.reservedUntil).toLocaleString("en-PK")}.
           </p>
         )}
-        <a
-          href={`/installments/status?reference=${encodeURIComponent(state.reference ?? "")}`}
-          className="mt-6 inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-[var(--line-strong)] bg-[var(--surface-raised)] px-5 text-sm font-medium text-[var(--text)]"
-        >
-          Check this application
-        </a>
+        {/*
+          The WhatsApp handoff.
+
+          The reviewer is a person, and in this market that person is reached on WhatsApp,
+          not by email. This opens the customer's own WhatsApp with the reference and the
+          figures already written; they press send. We do not send anything on their behalf,
+          and the message carries no CNIC (ADR-024) and no monthly figure without its total
+          (INST-003) - see `lib/whatsapp.ts`.
+
+          It renders only when a number is actually configured. It is filled in ink, not in
+          WhatsApp's green: emerald on this site means the monthly figure, the PTA chip, a
+          real success and the affordability meter, and nothing is built out of it (ADR-003).
+        */}
+        <div className="mt-6 flex flex-wrap gap-3">
+          {chatUrl && (
+            <a
+              href={chatUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-control)] bg-[var(--text)] px-5 text-sm font-semibold text-[var(--surface)] transition-opacity duration-200 [transition-timing-function:var(--ease-brand)] hover:opacity-90"
+            >
+              <IconChat />
+              Send us this on WhatsApp
+            </a>
+          )}
+          <a
+            href={`/installments/status?reference=${encodeURIComponent(state.reference ?? "")}`}
+            className="inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-[var(--line-strong)] bg-[var(--surface-raised)] px-5 text-sm font-medium text-[var(--text)]"
+          >
+            Check this application
+          </a>
+        </div>
+        {chatUrl && (
+          <p className="mt-3 text-sm text-[var(--text-muted)]">
+            Optional. It opens WhatsApp with your reference already written so you can talk
+            to the person reviewing this. Your review does not wait on it.
+          </p>
+        )}
       </div>
     );
   }

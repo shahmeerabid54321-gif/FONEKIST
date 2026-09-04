@@ -272,6 +272,21 @@ export function IconMail(props: IconProps) {
   );
 }
 
+/**
+ * The chat bubble, for the WhatsApp handoff.
+ *
+ * Deliberately not WhatsApp's own glyph. Their mark is their trademark and putting it on a
+ * button implies an integration we do not have: this opens the customer's own app with a
+ * message written, which is a conversation, not a service.
+ */
+export function IconChat(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 4.2c-5.08 0-9.2 2.98-9.2 6.65 0 2.1 1.35 3.97 3.45 5.19v3.76l3.63-2.5c.68.11 1.4.17 2.12.17 5.08 0 9.2-2.98 9.2-6.62 0-3.67-4.12-6.65-9.2-6.65Z" />
+    </Icon>
+  );
+}
+
 export function IconMapPin(props: IconProps) {
   return (
     <Icon {...props}>

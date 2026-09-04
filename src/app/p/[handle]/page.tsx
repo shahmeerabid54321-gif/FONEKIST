@@ -180,6 +180,15 @@ export default async function ProductPage({
                 cashPrice={price.amount}
                 compareAt={price.compareAt}
                 plans={plans}
+                /*
+                 * `?pay=installments` opens the panel on the plans.
+                 *
+                 * It is set by the things a customer presses to say that is how they intend
+                 * to buy: the monthly line on a card, the installments rails on the home
+                 * page, the listing filtered to plans. Arriving at a product page any other
+                 * way still opens on the cash price, which is the rule that matters.
+                 */
+                initialMode={query.pay === "installments" ? "installments" : "cash"}
               />
             ) : (
               <Price amount={price.amount} compareAt={price.compareAt} size="large" />

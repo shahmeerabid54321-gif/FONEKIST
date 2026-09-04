@@ -52,6 +52,26 @@ export default async function InstallmentsPage() {
             Plans start at <strong className="font-semibold">{formatPkr(from)} a month</strong>.
           </p>
         )}
+
+        {/*
+          The page that explains installments now has a way to start one.
+
+          It had four steps, a list of documents and a single outline button, and that button
+          was "Check an application" - a control for people who had already applied. Somebody
+          reading this page to decide whether to apply had nowhere to press. The primary
+          action goes to the handsets available on a plan, because an application is always
+          for one specific handset and one specific plan: there is no application to start
+          before that is chosen.
+        */}
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <Link
+            href={dynamicRoute("/phones?installments=1")}
+            className="inline-flex min-h-[52px] items-center rounded-[var(--radius-chip)] bg-[var(--text)] px-6 text-[length:var(--text-body-lg)] font-medium text-[var(--surface)] transition-opacity duration-200 [transition-timing-function:var(--ease-brand)] hover:opacity-90 active:scale-[0.98]"
+          >
+            Choose a phone and apply
+          </Link>
+          <p className="text-sm text-[var(--text-muted)]">Nothing is charged when you apply.</p>
+        </div>
       </header>
 
       <section className="mt-14 max-w-3xl" aria-labelledby="how-heading">
@@ -65,8 +85,8 @@ export default async function InstallmentsPage() {
               body: "Every plan shows the cash price, the advance, the monthly amount, the number of months, the total you will pay, and the difference from cash in rupees and per cent.",
             },
             {
-              title: "Apply",
-              body: "We need your CNIC, a guarantor's CNIC, your contact details and what you earn. Nothing is charged when you apply, and no payment is taken through this website at any stage.",
+              title: "Apply from the handset's page",
+              body: "Pick the plan you want on the phone you want, then press Apply for this plan. We need your CNIC, a guarantor's CNIC, your contact details and what you earn. Nothing is charged when you apply, and no payment is taken through this website at any stage.",
             },
             {
               title: "We hold the handset",

@@ -6,6 +6,11 @@ import { getCart } from "@/lib/cart";
 import { publicEnv } from "@/lib/env";
 import { CartLine } from "@/components/cart-line";
 import { PromotionForm } from "@/components/promotion-form";
+import { features } from "@/lib/features";
+import { degradeGracefully } from "@/lib/log";
+import { listPlans } from "@/lib/installments";
+import { dynamicRoute } from "@/lib/routes";
+import { IconCalendar } from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "Your cart",
@@ -46,6 +51,28 @@ export default async function CartPage() {
   }
 
   const shortfall = publicEnv.NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD_PKR - (cart?.subtotal ?? 0);
+
+  /*
+   * The other way to pay, offered where the decision is actually made.
+   *
+   * The cart and the checkout never mentioned installments at all, so a customer who added
+   * a handset was on the cash rail with no way off it: to reach a plan they had to go back
+   * to the product page and find a tab. This offers it beside Checkout, which is the moment
+   * somebody is deciding how to pay for this specific phone.
+   *
+   * Offered only for a cart of exactly one handset, because that is what commerce will
+   * accept: an agreement covers one handset at quantity one (INST-005), and a link that
+   * leads to a rejection is worse than no link. It carries no monthly figure, because a
+   * monthly figure never appears without its total (INST-003) and the total belongs on the
+   * plan panel it links to.
+   */
+  const single = items.length === 1 && items[0]!.quantity === 1 ? items[0]! : null;
+  const singleHandle = single?.product_handle ?? single?.variant?.product?.handle ?? null;
+
+  const installmentPlans =
+    features.installments && single && singleHandle
+      ? await degradeGracefully("cart.plans", [], () => listPlans(single.variant_id))
+      : [];
 
   return (
     <div className="mx-auto max-w-6xl px-5 sm:px-8 py-8">
@@ -110,6 +137,24 @@ export default async function CartPage() {
             <p className="mt-3 text-center text-sm text-[var(--text-muted)]">
               No account needed to order.
             </p>
+
+            {installmentPlans.length > 0 && singleHandle && (
+              <div className="mt-5 border-t border-[var(--line)] pt-5">
+                <Link
+                  href={dynamicRoute(
+                    `/p/${singleHandle}?variant=${encodeURIComponent(single!.variant_id)}&pay=installments`,
+                  )}
+                  className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[var(--radius-chip)] border border-[var(--line-strong)] px-5 text-sm font-semibold text-[var(--text)] transition-colors hover:bg-[var(--surface-sunken)] active:scale-[0.98]"
+                >
+                  <IconCalendar />
+                  Pay monthly instead
+                </Link>
+                <p className="mt-2.5 text-center text-xs leading-relaxed text-[var(--text-muted)]">
+                  The advance, the monthly amount, the number of months and the total you
+                  will pay are all shown before you apply. Nothing is charged when you apply.
+                </p>
+              </div>
+            )}
           </div>
         </aside>
       </div>
