@@ -5,7 +5,9 @@ import { buildFilterQuery, parseFilters, SORT_OPTIONS } from "@/lib/filters";
 import { search } from "@/lib/search";
 import { hitToCard, ProductGrid } from "@/components/product-grid";
 import { FilterPanel } from "@/components/filter-panel";
+import { CatalogUnavailable } from "@/components/catalog-unavailable";
 import { dynamicRoute } from "@/lib/routes";
+import { degradeGracefully } from "@/lib/log";
 import { features } from "@/lib/features";
 
 export const metadata: Metadata = {
@@ -33,19 +35,40 @@ export default async function PhonesPage({
   const params = await searchParams;
   const state = parseFilters(params);
 
-  const results = await search({
-    q: "",
-    brands: state.brands,
-    priceMin: state.priceMin,
-    priceMax: state.priceMax,
-    inStockOnly: state.inStockOnly,
-    monthlyMax: state.monthlyMax,
-    installmentsOnly: state.installmentsOnly,
-    attributes: state.attributes,
-    sort: state.sort,
-    page: state.page,
-    perPage: 24,
-  });
+  /*
+   * Read through `degradeGracefully`, so a backend that is slow or restarting costs the
+   * customer this one panel rather than the whole page. Before this, an unreachable
+   * commerce threw here and the route error boundary replaced the catalogue with "We could
+   * not load this page", which is the site's most important page gone over a timeout.
+   */
+  const results = await degradeGracefully("phones.search", null, () =>
+    search({
+      q: "",
+      brands: state.brands,
+      priceMin: state.priceMin,
+      priceMax: state.priceMax,
+      inStockOnly: state.inStockOnly,
+      monthlyMax: state.monthlyMax,
+      installmentsOnly: state.installmentsOnly,
+      attributes: state.attributes,
+      sort: state.sort,
+      page: state.page,
+      perPage: 24,
+    }),
+  );
+
+  if (!results) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)] sm:text-4xl">
+          All phones
+        </h1>
+        <div className="mt-8">
+          <CatalogUnavailable retryHref={dynamicRoute(`/phones${buildFilterQuery(state)}`)} />
+        </div>
+      </div>
+    );
+  }
 
   const brandFacet: SearchFacet | null =
     results.facets.find((facet) => facet.key === "brand_handle") ?? null;

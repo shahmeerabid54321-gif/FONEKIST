@@ -5,7 +5,9 @@ import { buildFilterQuery, parseFilters, SORT_OPTIONS } from "@/lib/filters";
 import { search } from "@/lib/search";
 import { hitToCard, ProductGrid } from "@/components/product-grid";
 import { FilterPanel } from "@/components/filter-panel";
+import { CatalogUnavailable } from "@/components/catalog-unavailable";
 import { dynamicRoute } from "@/lib/routes";
+import { degradeGracefully } from "@/lib/log";
 import { features } from "@/lib/features";
 
 export const metadata: Metadata = {
@@ -33,19 +35,41 @@ export default async function SearchPage({
   const query = typeof params.q === "string" ? params.q : "";
   const state = parseFilters(params);
 
-  const results = await search({
-    q: query,
-    brands: state.brands,
-    priceMin: state.priceMin,
-    priceMax: state.priceMax,
-    inStockOnly: state.inStockOnly,
-    monthlyMax: state.monthlyMax,
-    installmentsOnly: state.installmentsOnly,
-    attributes: state.attributes,
-    sort: state.sort,
-    page: state.page,
-    perPage: 24,
-  });
+  /*
+   * A failed search is reported as a failure, never as an empty result set. "0 phones" for
+   * a query the catalogue would have matched sends the customer away believing we do not
+   * carry it, which is worse than admitting the shop is having a moment.
+   */
+  const results = await degradeGracefully("search.results", null, () =>
+    search({
+      q: query,
+      brands: state.brands,
+      priceMin: state.priceMin,
+      priceMax: state.priceMax,
+      inStockOnly: state.inStockOnly,
+      monthlyMax: state.monthlyMax,
+      installmentsOnly: state.installmentsOnly,
+      attributes: state.attributes,
+      sort: state.sort,
+      page: state.page,
+      perPage: 24,
+    }),
+  );
+
+  if (!results) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)]">
+          {query ? `Results for "${query}"` : "Search"}
+        </h1>
+        <div className="mt-8">
+          <CatalogUnavailable
+            retryHref={dynamicRoute(`/search?${new URLSearchParams({ q: query }).toString()}`)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const brandFacet: SearchFacet | null =
     results.facets.find((facet) => facet.key === "brand_handle") ?? null;
