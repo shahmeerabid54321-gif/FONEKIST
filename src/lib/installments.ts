@@ -3,6 +3,7 @@ import {
   type InstallmentDisclosure,
   type InstallmentState,
 } from "@/lib/pk";
+import { cacheLife, cacheTag } from "next/cache";
 import { medusaFetch } from "./medusa";
 
 /**
@@ -20,19 +21,38 @@ export interface PlanView extends InstallmentDisclosure {
   variant_id: string;
 }
 
+async function fetchPlans(variantId: string): Promise<PlanView[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`plans:${variantId}`);
+
+  const data = await medusaFetch<{ data: { plans: PlanView[] } }>(
+    `/store/installment-plans?variant_id=${encodeURIComponent(variantId)}`,
+  );
+  return (data.data.plans ?? []).filter(isArithmeticallySound);
+}
+
 /**
  * The authoritative plans for a variant.
  *
- * Uncached. A card's "from Rs X/month" may lag by a minute because it comes from the search
- * index (ADR-014); this is the figure someone is about to agree to, so it is read fresh.
+ * Cached for an hour, which is a change from the `no-store` this used to be. A schedule is
+ * derived from the advance and markup shares authored in `installment_rule` (ADR-028), and
+ * those are edited by a merchant rather than moved by a market: an hour-old schedule is the
+ * same schedule. What made the old reasoning right was that this is "the figure someone is
+ * about to agree to" — and that is still handled, one step later and more strictly, because
+ * `submitApplicationAction` re-reads plans and price uncached at the moment of submission.
+ * Displaying a plan and agreeing to one are different acts with different freshness needs.
+ *
+ * `isArithmeticallySound` still runs on every plan before it is cached, so an inconsistent
+ * row is never stored, let alone shown.
+ *
+ * The fallback is outside the cache deliberately: caching an empty plan list after one
+ * transient failure would tell every visitor for an hour that this handset has no
+ * installment options, which is the single most damaging thing this site could get wrong.
  */
 export async function listPlans(variantId: string): Promise<PlanView[]> {
   try {
-    const data = await medusaFetch<{ data: { plans: PlanView[] } }>(
-      `/store/installment-plans?variant_id=${encodeURIComponent(variantId)}`,
-      { cache: "no-store" },
-    );
-    return (data.data.plans ?? []).filter(isArithmeticallySound);
+    return await fetchPlans(variantId);
   } catch {
     // Plans are an additional way to buy, not the only one. If this endpoint is down the
     // PDP still sells the handset for cash rather than erroring the page (REL-001).

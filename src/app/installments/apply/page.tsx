@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { features } from "@/lib/features";
@@ -6,6 +7,7 @@ import { listPlans } from "@/lib/installments";
 import { medusaFetch } from "@/lib/medusa";
 import { degradeGracefully } from "@/lib/log";
 import { InstallmentApplicationForm } from "@/components/installment-application-form";
+import { PlanSkeleton } from "@/components/skeletons";
 
 export const metadata: Metadata = {
   title: "Apply for an installment plan",
@@ -27,7 +29,30 @@ export const metadata: Metadata = {
  * cannot be loaded, the page refuses to render the form: taking somebody's CNIC against
  * terms we could not show them is not a degraded experience, it is the wrong outcome.
  */
-export default async function ApplyPage({
+/**
+ * The variant and plan being applied for come from the URL. The page around the form is
+ * the same for everyone, so it is prerendered and the plan's figures stream in.
+ */
+export default function ApplyPage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<ApplyPageSkeleton />}>
+      <ApplyPageBody searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+
+function ApplyPageSkeleton() {
+  return (
+    <div className="mx-auto max-w-2xl px-5 py-16 sm:px-8">
+      <PlanSkeleton />
+    </div>
+  );
+}
+
+async function ApplyPageBody({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

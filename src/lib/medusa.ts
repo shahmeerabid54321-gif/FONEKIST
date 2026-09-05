@@ -1,4 +1,5 @@
 import { AppError, type ErrorCode } from "@/lib/pk";
+import { unstable_rethrow } from "next/navigation";
 import { publicEnv, serverEnv } from "./env";
 
 /**
@@ -33,11 +34,37 @@ const DEFAULT_TIMEOUT_MS = 8_000;
  * otherwise cost every page the full long budget before it could render anything at all,
  * which is far worse for the customer than a fast failure. One request a minute carries the
  * wake; everything else still gives up in eight seconds and degrades.
+ *
+ * "One request" is load-bearing, and it did not used to be true. `lastWakeAttempt` was
+ * written *after* the first attempt failed, so a page that fans out — the home page fires
+ * five reads at once — had every branch time out at eight seconds, every branch read the
+ * same stale timestamp, and every branch escalate to its own forty-five second attempt in
+ * parallel. The wake was supposed to cost one request a minute and instead cost all of
+ * them. The claim is now taken before the attempt, and a second flag makes a wake that is
+ * already running visible to everyone else, so exactly one caller ever pays it.
+ *
+ * With the read layer cached (`lib/catalog.ts`, `lib/search.ts`), a warm cache serves while
+ * revalidation happens behind it, so in steady state no customer waits on a wake at all.
  */
 const COLD_START_TIMEOUT_MS = 45_000;
 const WAKE_COOLDOWN_MS = 60_000;
 
 let lastWakeAttempt = 0;
+let wakeInFlight = false;
+
+/**
+ * Takes the right to spend a long attempt, if it is going and nobody else has it.
+ *
+ * Claiming marks the clock immediately, so concurrent callers that fail in the same instant
+ * see the claim rather than a stale timestamp.
+ */
+function claimWake(): boolean {
+  if (wakeInFlight) return false;
+  if (Date.now() - lastWakeAttempt <= WAKE_COOLDOWN_MS) return false;
+  lastWakeAttempt = Date.now();
+  wakeInFlight = true;
+  return true;
+}
 
 export interface MedusaRequestOptions extends Omit<RequestInit, "signal"> {
   timeoutMs?: number;
@@ -55,21 +82,27 @@ export async function medusaFetch<T>(
     return await attempt<T>(path, rest, timeoutMs);
   } catch (error) {
     if (!worthWaking(error, rest.method, timeoutMs)) throw error;
-    lastWakeAttempt = Date.now();
-    return await attempt<T>(path, rest, COLD_START_TIMEOUT_MS);
+    if (!claimWake()) throw error;
+    try {
+      return await attempt<T>(path, rest, COLD_START_TIMEOUT_MS);
+    } finally {
+      wakeInFlight = false;
+    }
   }
 }
 
 /**
- * True when a failure looks like a sleeping backend rather than a broken one, and when this
- * process has not already spent a long attempt finding that out in the last minute.
+ * True when a failure looks like a sleeping backend rather than a broken one.
+ *
+ * Whether this process is *allowed* to act on that is `claimWake`'s decision, not this
+ * one's; keeping the two apart is what stops the cooldown being checked once and acted on
+ * several times.
  */
 function worthWaking(error: unknown, method: string | undefined, timeoutMs: number): boolean {
   if ((method ?? "GET").toUpperCase() !== "GET") return false;
   if (timeoutMs >= COLD_START_TIMEOUT_MS) return false;
   if (!(error instanceof AppError)) return false;
-  if ((error.internal as { timedOut?: boolean } | undefined)?.timedOut !== true) return false;
-  return Date.now() - lastWakeAttempt > WAKE_COOLDOWN_MS;
+  return (error.internal as { timedOut?: boolean } | undefined)?.timedOut === true;
 }
 
 async function attempt<T>(
@@ -102,6 +135,12 @@ async function attempt<T>(
     return (text ? JSON.parse(text) : null) as T;
   } catch (error) {
     if (error instanceof AppError) throw error;
+
+    // `fetch` also rejects with Next's internal render-control errors when a prerender or
+    // navigation no longer needs the request. Wrapping those as PROVIDER_UNAVAILABLE turns
+    // normal PPR cancellation into a false Medusa outage and lets graceful fallbacks swallow
+    // framework control flow. The framework helper knows every current control-flow shape.
+    unstable_rethrow(error);
 
     if (error instanceof Error && error.name === "AbortError") {
       throw new AppError("PROVIDER_UNAVAILABLE", {

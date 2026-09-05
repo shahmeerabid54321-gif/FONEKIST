@@ -85,14 +85,21 @@ type ServerEnv = z.infer<typeof serverSchema>;
  * code and throws if it does, while letting `publicEnv` be imported from anywhere, which is
  * the entire point of it being public.
  */
+let parsedServerEnv: ServerEnv | null = null;
+
 export const serverEnv: ServerEnv = new Proxy({} as ServerEnv, {
   get(_target, key: string) {
     if (typeof window !== "undefined") {
       throw new Error("serverEnv was imported into client code. Use publicEnv instead.");
     }
     // Parsed on first read rather than at import, so a missing variable still fails loudly
-    // and does so on the server where the message is useful.
-    const parsed = serverSchema.parse({ MEDUSA_BACKEND_URL: process.env.MEDUSA_BACKEND_URL });
-    return parsed[key as keyof ServerEnv];
+    // and does so on the server where the message is useful. Parsed *once*: this proxy is
+    // read on every single backend call, and running a Zod schema each time was a full
+    // validation pass per HTTP request to buy nothing, since the environment cannot change
+    // while the process is alive.
+    parsedServerEnv ??= serverSchema.parse({
+      MEDUSA_BACKEND_URL: process.env.MEDUSA_BACKEND_URL,
+    });
+    return parsedServerEnv[key as keyof ServerEnv];
   },
 });

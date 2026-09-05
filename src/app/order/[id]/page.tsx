@@ -1,7 +1,8 @@
-import Image from "next/image";
+import { Photo } from "@/components/photo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { formatPkr, formatPkMobile } from "@/lib/pk";
 import { InlineAlert } from "@/components/ui";
 import { buildTrackingView, getOrder, isCodOrder, paymentStatusCopy, returnsMayApply } from "@/lib/orders";
@@ -9,13 +10,12 @@ import { publicEnv } from "@/lib/env";
 import { RETURN_WINDOW_DAYS } from "@/lib/policies";
 import { ReturnRequestForm } from "@/components/return-request-form";
 import { BrandPip, SignalProgress } from "@/components/brand/signal-arc";
+import { RowSkeleton } from "@/components/skeletons";
 
 export const metadata: Metadata = {
   title: "Your order",
   robots: { index: false, follow: false },
 };
-
-export const dynamic = "force-dynamic";
 
 /**
  * Order confirmation and status. Source of truth: 05_UX_DESIGN_SPEC.md sections 9 and 10.
@@ -27,7 +27,31 @@ export const dynamic = "force-dynamic";
  * Payment state is read from the order record, so editing the URL cannot make an unpaid
  * order look paid.
  */
-export default async function OrderPage({
+/**
+ * One customer's order, never cached and never prerendered as content. The frame still is,
+ * so the page paints at once instead of after the lookup.
+ */
+export default function OrderPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ placed?: string }>;
+}) {
+  return (
+    <Suspense fallback={<OrderPageSkeleton />}>
+      <OrderPageBody params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+
+function OrderPageSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl px-5 py-12 sm:px-8">
+      <RowSkeleton rows={3} />
+    </div>
+  );
+}
+
+async function OrderPageBody({
   params,
   searchParams,
 }: {
@@ -121,7 +145,7 @@ export default async function OrderPage({
               <li key={item.id} className="flex gap-4 py-4">
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--radius-control)] bg-[var(--surface-sunken)]">
                   {item.thumbnail && (
-                    <Image
+                    <Photo
                       src={item.thumbnail}
                       alt=""
                       aria-hidden="true"

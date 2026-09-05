@@ -65,6 +65,42 @@ The plan this is being built from lives at
 - **No em dash or en dash in customer-visible text.**
 - **Price, stock and payment are never decided here.** Commerce is authoritative; the
   storefront composes and presents.
+- **Photographs are resized at build time and never at request time.**
+  `scripts/derive-media.mjs` emits four widths in AVIF and WebP for every JPG under
+  `public/media`, and `components/photo.tsx` serves them through `<picture>`. Do not reach
+  for `next/image` here: `images.unoptimized` is set, which makes `sizes` and `formats`
+  inert, and unsetting it puts a transform back on the request path, which is what
+  `unoptimized` was there to prevent. `mediaSources` derives the derivative paths *by rule*
+  rather than from a manifest, so nothing has to ship a lookup table to a browser, and that
+  rule is a contract: change the widths, the formats or the output directory in one place and
+  you must change the other, or every photograph 404s. It is a hard build step for the same
+  reason. `sizes` is now load-bearing rather than decoration: an overstated one downloads a
+  file too large and an understated one renders visibly soft, so measure the rendered width
+  before writing one. `tests/e2e/payload.spec.ts` is the guard.
+- **Twenty-four identical controls are cheaper as a client component than as server markup.**
+  Counter-intuitive and measured: React serialises a server component's element tree once per
+  instance into the flight payload, while a client component costs one module reference plus
+  its props. Rebuilding the comparison chip as server markup with one delegated listener grew
+  the catalogue's flight payload by 41 KB and made the page 8% slower to serve, with no
+  measurable hydration or interaction gain on a throttled CPU. It was reverted. Do not try it
+  again without measuring two builds side by side on separate ports.
+- **Every route must keep its static shell.** A server-side `cookies()` or `headers()` read
+  in anything the layout renders costs *every page in the site* its prerender and its
+  `s-maxage`, measured at roughly 80 req/s instead of 700. If a component needs request data,
+  wrap it in `<Suspense>` so it is a hole in a shell rather than the shell; if it needs no
+  more than a number, read it in the browser the way `components/query-badge.tsx` does.
+  `tests/e2e/instant.spec.ts` fails when a route loses its shell.
+- **Catalogue reads are cached for an hour and the unit count is not.** `use cache` with
+  `cacheLife("hours")` in `lib/catalog.ts` and `lib/search.ts` is what makes the site
+  serveable. Presenting an hour-old price is not deciding one, and the application path
+  re-reads price and plans uncached at submission. But "Only N left" an hour after N was true
+  is fabricated scarcity, so stock is read on the `seconds` profile in its own boundary. A
+  fallback must never be computed *inside* a `use cache` scope, or one timeout gets cached as
+  "this phone has no plans" for an hour.
+- **The query is two cookies.** `fk_query` holds the shortlist and stays `httpOnly`, because
+  it is the capability. `fk_query_n` holds only the count and is readable, because the header
+  badge needs it without making every page dynamic. `writeQuery` is the only place either is
+  written; they are set and cleared together.
 - **There is no cart and nothing is bought on the site.** Every pay-in-full path was
   removed: no `/cart`, no `/checkout`, no COD, no promotions, no quantity. The customer's
   shortlist is the *query* (`lib/query.ts`), which holds handles, variant ids and plan ids
@@ -87,6 +123,29 @@ Changing any of these means changing the monorepo too, and the two must land tog
 | Which products FONEKIST may sell | `apps/commerce/src/scripts/seed.ts` sales-channel assignment |
 | A new store API this storefront calls | `apps/commerce/src/api/store/…` |
 | A material decision | a new ADR in `23_ARCHITECTURE_DECISION_RECORDS.md` |
+
+## Performance
+
+The storefront is prerendered. `cacheComponents` and `partialPrefetching` are on, every
+route ships a static shell, and the request-dependent parts stream into `<Suspense>`
+boundaries. Before this, not one content page was prerendered and every click cost a full
+server render: `.next/prerender-manifest.json` is the check, and it should list every route
+in the Routes table below, not just the icons.
+
+`pnpm serve` runs one worker per core and is what to measure; `pnpm dev` recompiles per route
+and tells you nothing. `pnpm loadtest` reports requests a second and the concurrent-visitor
+figure that follows from it. README.md has the measured numbers and the scaling order.
+
+Changing anything in `src/lib/catalog.ts`, `src/lib/search.ts`, `src/components/site-header.tsx`
+or `src/app/layout.tsx` can silently cost the whole site its shell. Run
+`PLAYWRIGHT_BASE_URL=http://localhost:3001 pnpm test:e2e` against `pnpm serve` afterwards.
+
+Two behaviours come with Cache Components. React keeps the route you navigated away from
+mounted and hidden (`<Activity>`), so an unscoped test locator can match two routes at once.
+Harmless UI state may survive, but the installment form deliberately clears CNIC, income,
+address and upload state when its Activity is hidden. A `use cache` scope also may not read
+request data, which is why the pages resolve `searchParams` in a small outer component and
+pass plain values inward.
 
 ## Status
 

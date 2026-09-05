@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { features } from "@/lib/features";
@@ -9,6 +10,7 @@ import { hitToCard, ProductGrid } from "@/components/product-grid";
 import { degradeGracefully } from "@/lib/log";
 import { dynamicRoute } from "@/lib/routes";
 import { CatalogUnavailable } from "@/components/catalog-unavailable";
+import { CatalogSkeleton } from "@/components/skeletons";
 
 export const metadata: Metadata = {
   title: "Compare phones",
@@ -25,7 +27,35 @@ export const metadata: Metadata = {
  * the page where somebody decides which handset to buy, so a stale price here would be a
  * stale price at the worst possible moment.
  */
-export default async function ComparePage({
+/**
+ * Which phones are being compared lives in the URL, so the table cannot be prerendered.
+ * The frame can, and does: the page arrives immediately and the columns stream into it.
+ */
+export default function ComparePage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<ComparePageSkeleton />}>
+      <ComparePageBody searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+
+function ComparePageSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+      <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)]">
+        Compare phones
+      </h1>
+      <div className="mt-10">
+        <CatalogSkeleton count={3} />
+      </div>
+    </div>
+  );
+}
+
+async function ComparePageBody({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

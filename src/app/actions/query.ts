@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { AppError } from "@/lib/pk";
 import { log } from "@/lib/log";
 import { MAX_QUERY, readQuery, writeQuery, type QueryEntry } from "@/lib/query";
@@ -30,14 +30,23 @@ function toResult(error: unknown, operation: string): ActionResult {
 }
 
 /**
- * Revalidates the pages a change to the query is visible on.
+ * Refreshes what a change to the query is visible on.
  *
- * The layout revalidation is for the header count, which renders on every page. Without it
- * the badge stays a step behind and reports a shortlist the customer has already changed.
+ * This was `revalidatePath("/query")` plus `revalidatePath("/", "layout")`, and the second
+ * one was quietly the most expensive line in the storefront. The header count renders on
+ * every page, so invalidating the layout looked like the honest way to keep the badge from
+ * lagging. What it actually did was clear the client router cache for the entire site on
+ * every add, remove and clear: every link the customer clicked afterwards became a fresh
+ * server round trip instead of an instant cached navigation. Adding a phone to a shortlist
+ * made the rest of the site slow.
+ *
+ * `refresh()` is the right tool and exists for exactly this. The badge and `/query` read
+ * uncached data — a cookie, and figures re-read from commerce — so there is no cache entry
+ * to invalidate here at all. It re-renders the uncached parts of what is on screen and
+ * leaves every cached shell, and the client router cache, untouched.
  */
 function revalidateQuery(): void {
-  revalidatePath("/query");
-  revalidatePath("/", "layout");
+  refresh();
 }
 
 /**

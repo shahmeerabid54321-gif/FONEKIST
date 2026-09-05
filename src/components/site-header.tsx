@@ -1,14 +1,13 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { Suspense } from "react";
-import { queryCount } from "@/lib/query";
 import { features } from "@/lib/features";
 import { degradeGracefully } from "@/lib/log";
 import { listBrands } from "@/lib/brands";
 import { FonekistWordmark } from "./brand/logo";
 import { NavLink } from "./nav-link";
 import { SearchBox } from "./search-box";
-import { IconCalendar, IconCompare, IconHandset, IconQuery, IconTruck } from "./icons";
+import { QueryBadgeLink } from "./query-badge";
+import { IconCalendar, IconCompare, IconHandset, IconTruck } from "./icons";
 
 /**
  * Site header.
@@ -17,9 +16,12 @@ import { IconCalendar, IconCompare, IconHandset, IconQuery, IconTruck } from "./
  * name, and the previous header buried the field at the end of a row of five equal-weight
  * text links, which made looking something up the hardest thing on the page.
  *
- * The query count reads a cookie, which makes whatever renders it dynamic. It is isolated
- * in its own suspended component so that is the only part of the header the cookie affects,
- * rather than the whole shell of every page on the site.
+ * The query count reads a cookie, which makes whatever renders it dynamic. It used to do
+ * that on the server, isolated in a suspended component so it would be the only part of the
+ * header affected. Even isolated it was too expensive: a dynamic hole in the header is a
+ * dynamic hole in every page on the site, so no page could be static and none could be
+ * cached by a CDN. It reads the count in the browser now instead; `components/query-badge`
+ * has the reasoning and the measurement.
  *
  * The brand list is read through `degradeGracefully`: a header that throws takes down every
  * page, and a missing brand rail is not worth that.
@@ -96,13 +98,12 @@ export async function SiteHeader() {
         </nav>
 
         {/*
-          Suspended so the count, and only the count, is what makes a page dynamic. The
-          fallback is the same link without a number: a cart link that says "0" while the
-          count is still loading is a claim we have not checked yet.
+          Client-side, so this header stays part of a static page. It renders without a
+          number first and fills the count in immediately after, which is the same sequence
+          the suspended server version produced: a link that says "0" before we have checked
+          is a claim we have not checked yet.
         */}
-        <Suspense fallback={<QueryLink count={0} />}>
-          <QueryCount />
-        </Suspense>
+        <QueryBadgeLink />
       </div>
 
       {brands.length > 0 && (
@@ -122,37 +123,5 @@ export async function SiteHeader() {
         </nav>
       )}
     </header>
-  );
-}
-
-/**
- * The query count.
- *
- * Reads the query cookie, so this is the one dynamic thing in the header. A failure renders
- * the link with no number rather than with a zero: "no count" is honest, "0" is a claim
- * about the shortlist that we could not actually check.
- */
-async function QueryCount() {
-  const count = await degradeGracefully("header.query", 0, () => queryCount());
-  return <QueryLink count={count} />;
-}
-
-function QueryLink({ count }: { count: number }) {
-  return (
-    <Link
-      href="/query"
-      className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-chip)] bg-[var(--text)] px-5 text-sm font-semibold text-[var(--surface)] transition-opacity duration-200 [transition-timing-function:var(--ease-brand)] hover:opacity-90"
-    >
-      <IconQuery />
-      Query
-      {count > 0 && (
-        <>
-          <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--surface)] px-1 font-mono text-[11px] text-[var(--text)]">
-            {count}
-          </span>
-          <span className="sr-only">phones</span>
-        </>
-      )}
-    </Link>
   );
 }

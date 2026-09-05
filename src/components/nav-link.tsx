@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
 /**
  * A main-navigation link that knows whether it is the page you are on.
@@ -22,23 +22,48 @@ import type { ReactNode } from "react";
  *
  * A client component purely because `usePathname` is one. It is the only interactive part of
  * an otherwise server-rendered header, so the cost is one small leaf rather than the shell.
+ *
+ * **Why the boundary lives in here.** `usePathname` cannot resolve while Next is building a
+ * static shell for a route with dynamic params, because at that point there is no single
+ * pathname to report: it suspends, and an unsuspended read fails the build. This component
+ * renders in the header of every page on the site, so a boundary at any call site would
+ * have to be repeated at all of them and would be forgotten at the next one.
+ *
+ * Putting it here means the header ships in the prerendered shell in its resting state, and
+ * the current-page marker arrives a moment later. That ordering is right on its own merits:
+ * the marker is an enhancement, and the navigation is fully usable and fully legible
+ * without it. The fallback is the same link, so nothing moves when the marker lands.
  */
-export function NavLink({
-  href,
-  children,
-  /** Also mark as current for routes below this one, e.g. /phones for /phones?brand=apple. */
-  matchNested = false,
-  /** Pull the pill's padding back out, for a vertical column that must stay left aligned. */
-  flush = false,
-}: {
+export function NavLink(props: NavLinkProps) {
+  return (
+    <Suspense fallback={<NavAnchor {...props} current={false} />}>
+      <CurrentAwareNavLink {...props} />
+    </Suspense>
+  );
+}
+
+interface NavLinkProps {
   href: Route;
   children: ReactNode;
+  /** Also mark as current for routes below this one, e.g. /phones for /phones?brand=apple. */
   matchNested?: boolean;
+  /** Pull the pill's padding back out, for a vertical column that must stay left aligned. */
   flush?: boolean;
-}) {
+}
+
+function CurrentAwareNavLink({ href, matchNested = false, ...rest }: NavLinkProps) {
   const pathname = usePathname();
   const current = matchNested ? pathname === href || pathname.startsWith(`${href}/`) : pathname === href;
 
+  return <NavAnchor href={href} matchNested={matchNested} {...rest} current={current} />;
+}
+
+function NavAnchor({
+  href,
+  children,
+  flush = false,
+  current,
+}: NavLinkProps & { current: boolean }) {
   return (
     <Link
       href={href}

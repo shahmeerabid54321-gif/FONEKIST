@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import type { AutocompleteSuggestion, SearchResponse } from "@/lib/pk";
 import { medusaFetch } from "./medusa";
 
@@ -29,7 +30,19 @@ export interface SearchParams {
   perPage?: number;
 }
 
+/**
+ * The catalogue read path, and the one every listing surface goes through.
+ *
+ * Cached for an hour on the whole call, keyed by `params`, so a filter combination that
+ * anybody has already asked for costs nothing to serve again. ADR-014 permits results to
+ * lag; this is a wider window than the minute it used to be, and it is what lets `/phones`
+ * and the brand pages be served from a prerendered shell rather than a live query.
+ */
 export async function search(params: SearchParams): Promise<SearchResponse> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("search");
+
   const query = new URLSearchParams();
   query.set("q", params.q);
   if (params.category) query.set("category", params.category);
@@ -51,22 +64,29 @@ export async function search(params: SearchParams): Promise<SearchResponse> {
 
   const response = await medusaFetch<{ data: SearchResponse }>(
     `/store/search?${query.toString()}`,
-    // Results may lag the catalogue by a minute; that is what ADR-014 permits, and it
-    // keeps a burst of identical searches off the database.
-    { next: { revalidate: 60, tags: ["search"] } },
   );
 
   return response.data;
 }
 
+/**
+ * Type-ahead. A shorter profile than the catalogue: this is called per keystroke, the same
+ * prefixes recur constantly across visitors, and a suggestion list that is a few minutes
+ * behind the catalogue costs nobody anything.
+ */
 export async function autocomplete(query: string): Promise<AutocompleteSuggestion[]> {
   if (query.trim().length < 2) return [];
+  return fetchSuggestions(query);
+}
+
+async function fetchSuggestions(query: string): Promise<AutocompleteSuggestion[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("search");
 
   const response = await medusaFetch<{ data: { suggestions: AutocompleteSuggestion[] } }>(
     `/store/search/autocomplete?q=${encodeURIComponent(query)}`,
-    // Short cache: type-ahead is called per keystroke, and the same prefixes recur
-    // constantly across visitors.
-    { next: { revalidate: 30 }, timeoutMs: 3_000 },
+    { timeoutMs: 3_000 },
   );
 
   return response.data.suggestions;

@@ -17,3 +17,7 @@ playwright-report/
 coverage/
 .cache/
 commerce/.documents/
+
+# Built by `pnpm derive:media` from the committed photographs beside them. Regenerated
+# during `pnpm build`, so committing 704 binaries that a script reproduces buys nothing.
+public/media/derived/

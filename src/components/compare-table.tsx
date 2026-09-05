@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Photo } from "@/components/photo";
 import Link from "next/link";
 import { formatPkr } from "@/lib/pk";
 import { mediaUrl } from "@/lib/media";
@@ -78,11 +78,14 @@ export function CompareTable({
                     <Link href={`/p/${column.handle}`} className="block">
                       {thumbnail && (
                         <span className="relative mb-3 block aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface-sunken)]">
-                          <Image
+                          <Photo
                             src={thumbnail}
                             alt=""
                             fill
-                            sizes="200px"
+                            // A column is `min-w-[180px]` and grows to fill the table: measured at 440px
+                            // with two phones on a wide screen. The old "200px" now buys a
+                            // visibly soft photograph rather than nothing.
+                            sizes="(max-width: 768px) 45vw, 440px"
                             className="object-cover"
                           />
                         </span>

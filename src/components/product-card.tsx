@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Photo } from "@/components/photo";
 import Link from "next/link";
 import { formatPkr } from "@/lib/pk";
 import { mediaUrl } from "@/lib/media";
@@ -93,13 +93,17 @@ export function ProductCard({
     <article className="group flex h-full flex-col">
       <div className="relative aspect-square overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface-tile)]">
         {thumbnail && (
-          <Image
+          <Photo
             src={thumbnail}
             // Decorative: the heading immediately below carries the same name, so alt text
             // here would make a screen reader announce the product twice.
             alt=""
             fill
-            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
+            // Measured against the real grid rather than guessed: one column at 390 (350px),
+            // two at 768 (340px), five at 1440 (248px). While `unoptimized` was set this
+            // string did nothing; now it decides which file is downloaded, and the 30vw it
+            // used to claim was 74% wider than the tile it describes.
+            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 18vw"
             className={
               soldOut
                 ? "tile-media object-cover opacity-55 grayscale"

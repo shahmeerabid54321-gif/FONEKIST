@@ -47,6 +47,30 @@ describe("degradeGracefully", () => {
     ).rejects.toBe(bailout);
   });
 
+  it("rethrows a completed prerender's hanging-promise signal", async () => {
+    // Cache Components rejects unfinished fetches with this digest when a prerender or
+    // navigation no longer needs them. It is expected control flow, not a provider outage.
+    const finished = Object.assign(new Error("prerender complete"), {
+      digest: "HANGING_PROMISE_REJECTION",
+    });
+    await expect(
+      degradeGracefully("test.read", "fallback", async () => {
+        throw finished;
+      }),
+    ).rejects.toBe(finished);
+  });
+
+  it("rethrows an interrupted prerender signal", async () => {
+    const interrupted = Object.assign(new Error("prerender interrupted"), {
+      digest: "NEXT_PRERENDER_INTERRUPTED",
+    });
+    await expect(
+      degradeGracefully("test.read", "fallback", async () => {
+        throw interrupted;
+      }),
+    ).rejects.toBe(interrupted);
+  });
+
   it("does not mistake an ordinary error carrying a digest for control flow", async () => {
     const real = Object.assign(new Error("boom"), { digest: "3771858665" });
     expect(

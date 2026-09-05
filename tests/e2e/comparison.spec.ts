@@ -57,6 +57,11 @@ test("the differences-only toggle is a link, so the filtered view is shareable t
   const [a, b] = await twoHandles(page);
   await page.goto(`/compare?ids=${a},${b}`);
 
+  // Wait for the table before counting. The comparison depends on `?ids=`, so it streams
+  // into a static shell rather than arriving with the document, and `count()` does not
+  // retry: without this it counts the rows of a table that has not been sent yet, gets
+  // zero, and the assertion below passes or fails for the wrong reason.
+  await expect(page.getByRole("table")).toBeVisible();
   const allRows = await page.getByRole("table").getByRole("rowheader").count();
 
   await page.getByRole("link", { name: "Show differences only" }).click();

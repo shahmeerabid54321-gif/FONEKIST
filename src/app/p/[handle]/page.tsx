@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -11,6 +12,7 @@ import {
   modelOf,
   priceFor,
   stockLevelFor,
+  type StockLevel,
 } from "@/lib/catalog";
 import { listPlans } from "@/lib/installments";
 import { features } from "@/lib/features";
@@ -28,6 +30,29 @@ import { SpecTable } from "@/components/spec-table";
 import { VariantSelector } from "@/components/variant-selector";
 import { CompareToggle } from "@/components/compare-tray";
 import { CatalogUnavailable } from "@/components/catalog-unavailable";
+import { ProductSkeleton } from "@/components/skeletons";
+import { getLiveStock } from "@/lib/catalog";
+import { search as searchCatalog } from "@/lib/search";
+
+/**
+ * Which product pages are built ahead of time.
+ *
+ * A deliberately small slice rather than the whole catalogue. Pages named here are HTML on
+ * disk and cost the server nothing; pages that are not still work, they get a shell and
+ * stream. Since the build runs on a 0.1-CPU instance (see `experimental.cpus` in
+ * `next.config.ts`), prerendering everything would trade a fast site for a build that does
+ * not finish, so this takes the newest twenty and lets the long tail warm itself on first
+ * visit.
+ */
+export async function generateStaticParams(): Promise<{ handle: string }[]> {
+  const results = await degradeGracefully("pdp.staticParams", null, () =>
+    searchCatalog({ q: "", sort: "newest", perPage: 20 }),
+  );
+  const handles = results?.hits.map((hit) => ({ handle: hit.slug })) ?? [];
+  // Cache Components needs at least one param to prerender and validate against, and a
+  // backend that is down at build time must not fail the build.
+  return handles.length > 0 ? handles : [{ handle: "redmi-13c" }];
+}
 
 export async function generateMetadata({
   params,
@@ -49,8 +74,16 @@ export async function generateMetadata({
 /**
  * The product page.
  *
- * Read fresh, never cached: this page states the price, the stock and the plan somebody is
- * about to agree to. A card may lag the catalogue by a minute (ADR-014); this may not.
+ * **What is cached here and what is not.** The page body is cached for an hour: title,
+ * images, specifications, price and the plan figures. That is a change from the `no-store`
+ * this used to be, and the reasoning that made `no-store` right has moved rather than gone.
+ * Presenting a price is not deciding one; commerce still decides, and
+ * `submitApplicationAction` re-reads price and plans uncached at the moment an application
+ * is actually made. What a customer browses is a catalogue, what they agree to is checked.
+ *
+ * The exception is the unit count. "Only 3 left" an hour after it was true is manufactured
+ * scarcity, which this project forbids outright, so availability is read live through
+ * `getLiveStock` in its own Suspense boundary and streams in after the rest of the page.
  *
  * Variant selection lives in the URL, so choosing 512 GB is a real navigation that can be
  * shared, bookmarked and reached with the back button, and it works with JavaScript
@@ -61,7 +94,23 @@ export async function generateMetadata({
  * surprise in this market, and burying it in a spec row would be technically honest and
  * practically misleading.
  */
-export default async function ProductPage({
+export default function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ handle: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
+      <Suspense fallback={<ProductSkeleton />}>
+        <ProductBody params={params} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function ProductBody({
   params,
   searchParams,
 }: {
@@ -102,11 +151,7 @@ export default async function ProductPage({
   if (product && !variant) notFound();
 
   if (!product || !variant) {
-    return (
-      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
-        <CatalogUnavailable retryHref={dynamicRoute(`/p/${handle}`)} />
-      </div>
-    );
+    return <CatalogUnavailable retryHref={dynamicRoute(`/p/${handle}`)} />;
   }
 
   const brandForSearch = brandHandle(brandOf(product));
@@ -155,7 +200,7 @@ export default async function ProductPage({
   const outOfStock = stock.level === "out_of_stock";
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
+    <>
       <nav aria-label="Breadcrumb" className="text-sm text-[var(--text-muted)]">
         <Link href="/phones" className="underline">
           Phones
@@ -261,16 +306,30 @@ export default async function ProductPage({
             <VariantSelector product={product} selectedVariant={variant} />
           </div>
 
-          <p className="mt-5 text-sm text-[var(--text-soft)]">
-            {outOfStock
-              ? "Out of stock"
-              : stock.level === "low_stock" && stock.quantity != null
-                ? `Only ${stock.quantity} left`
-                : stock.level === "preorder"
-                  ? "Available to order"
-                  : "In stock"}
-            {extras.warranty ? ` · ${extras.warranty.label}` : ""}
-          </p>
+          {/*
+            Availability streams in rather than arriving with the page.
+
+            Everything above this line is an hour-cached read, which is fine for a title and
+            a price and is not fine for a unit count. The fallback states the cached *level*
+            and no number: "In stock" is a claim the cache can still support, "Only 3 left"
+            is not.
+          */}
+          <Suspense
+            fallback={
+              <StockLine
+                level={stock.level}
+                quantity={null}
+                warranty={extras.warranty?.label ?? null}
+              />
+            }
+          >
+            <LiveStockLine
+              handle={product.handle}
+              variantId={variant.id}
+              fallback={stock}
+              warranty={extras.warranty?.label ?? null}
+            />
+          </Suspense>
 
           {/*
             The shortlist button, not a link that starts a comparison of one.
@@ -402,6 +461,68 @@ export default async function ProductPage({
         }}
       />
 
-    </div>
+    </>
+  );
+}
+
+/**
+ * The availability line.
+ *
+ * Split out so the same markup serves the cached fallback and the live answer, and the two
+ * cannot drift into saying things in different words.
+ *
+ * A quantity is printed only when one was actually counted. `quantity: null` means we have
+ * a level but not a number, and the line then says "In stock" rather than inventing one.
+ */
+function StockLine({
+  level,
+  quantity,
+  warranty,
+}: {
+  level: StockLevel;
+  quantity: number | null;
+  warranty: string | null;
+}) {
+  const availability =
+    level === "out_of_stock"
+      ? "Out of stock"
+      : level === "low_stock" && quantity != null
+        ? `Only ${quantity} left`
+        : level === "preorder"
+          ? "Available to order"
+          : "In stock";
+
+  return (
+    <p className="mt-5 text-sm text-[var(--text-soft)]">
+      {availability}
+      {warranty ? ` \u00b7 ${warranty}` : ""}
+    </p>
+  );
+}
+
+/**
+ * Reads inventory on every request, outside the hour-long cache the rest of this page uses.
+ *
+ * When commerce cannot be reached it falls back to the cached level with the count dropped,
+ * which downgrades the claim instead of guessing at it.
+ */
+async function LiveStockLine({
+  handle,
+  variantId,
+  fallback,
+  warranty,
+}: {
+  handle: string;
+  variantId: string;
+  fallback: { level: StockLevel; quantity: number | null };
+  warranty: string | null;
+}) {
+  const live = await getLiveStock(handle, variantId);
+  return (
+    <StockLine
+      level={live?.level ?? fallback.level}
+      quantity={live?.quantity ?? null}
+      warranty={warranty}
+    />
   );
 }

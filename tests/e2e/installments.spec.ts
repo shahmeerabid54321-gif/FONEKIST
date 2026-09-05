@@ -111,7 +111,12 @@ test.describe("the application", () => {
 
     // The figures stay on screen while the customer decides to hand over a CNIC.
     await expect(page.getByRole("heading", { name: "The plan you are applying for" })).toBeVisible();
-    await expect(page.getByText("Total you pay")).toBeVisible();
+    // Scoped to what is actually on screen. Under Cache Components, React keeps the route
+    // you navigated away from mounted and hidden (`<Activity>`), so after a click through
+    // from a product page the previous page's plan panel is still in the document. It is
+    // `display: none` and no user or screen reader sees it, but an unscoped text locator
+    // matches it and fails on strict mode.
+    await expect(page.getByText("Total you pay").locator("visible=true")).toBeVisible();
 
     // The exact wording shown is what gets stored with the application (SEC-008), so it has
     // to be readable on the page rather than behind a link.
@@ -135,6 +140,30 @@ test.describe("the application", () => {
 
     await expect(page.getByText(/Nothing is charged when you/).first()).toBeVisible();
   });
+
+  test("clears sensitive application fields when the customer navigates away", async ({
+    page,
+  }) => {
+    await page.goto(await firstPhoneWithPlans(page));
+    await page.getByRole("link", { name: "Apply for this plan" }).click();
+
+    const cnic = page.locator("input[name='applicant_cnic']:visible");
+    const income = page.locator("input[name='monthly_income']:visible");
+    await cnic.fill("42101-1234567-1");
+    await income.fill("125000");
+
+    await page.getByRole("link", { name: "Phones", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/phones/);
+
+    // Cache Components leaves the application route mounted inside a hidden Activity.
+    // The route may remain in the DOM, but identity and financial values must not.
+    await expect(page.locator("input[name='applicant_cnic']")).toHaveValue("");
+    await expect(page.locator("input[name='monthly_income']")).toHaveValue("");
+
+    await page.goBack();
+    await expect(page.locator("input[name='applicant_cnic']:visible")).toHaveValue("");
+    await expect(page.locator("input[name='monthly_income']:visible")).toHaveValue("");
+  });
 });
 
 test.describe("application status", () => {
@@ -142,7 +171,10 @@ test.describe("application status", () => {
     // Distinguishable answers would let somebody walk the reference space to discover which
     // applications exist (SEC-004).
     await page.goto("/installments/status?reference=FK-00000000&phone=03001234567");
-    await expect(page.getByRole("alert")).toContainText(
+    // Scoped to the page's own content. Next renders its route announcer as a second
+    // `role="alert"` in the body, and now that this result streams in rather than arriving
+    // with the document, both are present when the assertion runs.
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "We could not find an application with those details",
     );
   });

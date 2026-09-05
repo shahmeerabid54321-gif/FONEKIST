@@ -3,8 +3,8 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { buildCompareHref, MAX_COMPARE } from "@/lib/compare";
+import { Suspense, useCallback, useEffect, useSyncExternalStore } from "react";
+import { buildCompareHref, MAX_COMPARE } from "@/lib/compare-shared";
 import { IconCheck, IconClose, IconCompare, IconPlus } from "./icons";
 
 /**
@@ -166,8 +166,22 @@ export function CompareToggle({ handle, className = "" }: { handle: string; clas
  *
  * Hidden on `/compare` itself, where the URL is already showing the comparison and a tray
  * offering to open it would be a control that does nothing.
+ *
+ * Suspended because of that `usePathname`, which cannot resolve while a static shell is
+ * being built and would otherwise block every route below the layout that renders this. The
+ * fallback is `null`, which is also what this renders on a first paint anyway: the shortlist
+ * lives in `localStorage` and is empty until the browser has read it, so the tray has always
+ * appeared a beat after the page rather than with it.
  */
 export function CompareTray() {
+  return (
+    <Suspense fallback={null}>
+      <CompareTrayBar />
+    </Suspense>
+  );
+}
+
+function CompareTrayBar() {
   const shortlist = useCompareShortlist();
   const pathname = usePathname();
 

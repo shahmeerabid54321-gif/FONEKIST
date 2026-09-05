@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { formatPkr } from "@/lib/pk";
 import { features } from "@/lib/features";
 import { getApplicationStatus } from "@/lib/installments";
 import { InlineAlert } from "@/components/ui";
+import { RowSkeleton } from "@/components/skeletons";
 
 export const metadata: Metadata = {
   title: "Check an application",
@@ -24,7 +26,30 @@ export const metadata: Metadata = {
  * A plain GET form, so the check works with no JavaScript and the result is a real URL the
  * applicant can return to.
  */
-export default async function ApplicationStatusPage({
+/**
+ * A status lookup is per applicant and never cached. The form and the page around it are
+ * the same for everybody, so they prerender and only the result streams.
+ */
+export default function ApplicationStatusPage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<StatusPageSkeleton />}>
+      <ApplicationStatusPageBody searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+
+function StatusPageSkeleton() {
+  return (
+    <div className="mx-auto max-w-2xl px-5 py-16 sm:px-8">
+      <RowSkeleton rows={2} />
+    </div>
+  );
+}
+
+async function ApplicationStatusPageBody({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

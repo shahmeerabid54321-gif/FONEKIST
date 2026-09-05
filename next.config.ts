@@ -39,68 +39,95 @@ const config: NextConfig = {
   typedRoutes: true,
 
   /*
+   * Partial Prerendering, which is the difference between a shop and a slideshow.
+   *
+   * Before this flag, every one of the fourteen routes rendered on every request. Not one
+   * content page was prerendered: `.next/prerender-manifest.json` listed the icons, the web
+   * manifest and nothing else, `dynamicRoutes` was empty, and `revalidate = 60` on the home
+   * page and `generateStaticParams` on the policies produced no HTML at all. The cause was a
+   * single `cookies()` read for the header's query count, which without PPR opts the entire
+   * route tree into dynamic rendering no matter how carefully it is wrapped.
+   *
+   * `site-header.tsx` already says the Suspense boundary around that count is what keeps the
+   * cookie from making every page dynamic. That was true of the intent and false of the
+   * build. This flag is what makes the comment correct: a `<Suspense>` boundary now marks a
+   * dynamic hole in an otherwise static shell, so the cookie costs us the badge and nothing
+   * else.
+   *
+   * `partialPrefetching` is the other half. Each visible link prefetches the destination's
+   * shell, so by the time a customer clicks, the page they are going to is already in the
+   * browser. Nothing is cached implicitly under this model; `use cache` in `lib/` is where
+   * every caching decision now lives.
+   */
+  cacheComponents: true,
+  partialPrefetching: true,
+
+  /*
+   * A self-contained server directory, which is what `scripts/serve.mjs` runs across every
+   * core (see below) and what a container should copy rather than shipping `node_modules`.
+   */
+  output: "standalone",
+
+  /*
    * Static generation, sized for the machine that actually runs it.
    *
    * Next sizes its prerender pool from the reported core count, which on Render's free
-   * instance meant 25 worker processes fighting over 0.1 of a CPU for 22 pages. Pages that
-   * do no data fetching at all, `/_not-found` among them, then missed the 60 second budget
-   * and failed the build. One worker builds them in sequence instead: slower on a big
-   * machine, and the only thing that finishes on a small one.
+   * instance meant 25 worker processes fighting over 0.1 of a CPU. One worker builds them in
+   * sequence instead: slower on a big machine, and the only thing that finishes on a small
+   * one.
    *
-   * The longer budget is for the backend rather than the CPU. Every page renders the header
-   * and footer, both of which read the brand list, and a free-tier backend that is cold or
-   * mid-redeploy can spend the full 8 second client timeout before the page gives up on it.
+   * This matters more now than it did when it was written, because this is the first build
+   * that actually prerenders anything. `generateStaticParams` on the product and brand pages
+   * is deliberately capped at a small slice for the same reason: the paths it does not name
+   * still work, they stream instead.
+   *
+   * The longer budget is for the backend rather than the CPU. A free-tier backend that is
+   * cold or mid-redeploy can spend the full client timeout before a page gives up on it.
    */
   experimental: { cpus: 1 },
   staticPageGenerationTimeout: 180,
+
+  /*
+   * How long a fully static page may be served from a shared cache.
+   *
+   * Only reachable now that the header stopped reading a cookie on the server: while it did,
+   * every document in the site was `private, no-store` and no CDN could hold any of it. The
+   * static routes carry `s-maxage=3600, stale-while-revalidate` instead, which is the single
+   * cheapest capacity increase available to this project, because a CDN then answers most
+   * traffic without the origin being involved at all.
+   */
+  expireTime: 3600,
 
   // FONEKIST documents its own conventions in CLAUDE.md; Next's generated agent files
   // would duplicate and contradict them.
   agentRules: false,
 
+  /*
+   * The image endpoint, which this storefront no longer uses.
+   *
+   * `unoptimized` was the right call for the wrong question. On-demand transformation of
+   * twenty-four catalogue tiles is a twenty-four request CPU spike, and on a 0.1-CPU
+   * instance that is the whole storefront timing out, so turning it off was correct. What it
+   * also did was make `sizes` decoration and `formats` inert, and leave a phone downloading
+   * the 1200px, 124 KB average source to draw a 180px tile.
+   *
+   * Both of those are answers to "how do we resize at request time?", and the photographs
+   * are committed files: the question is a build-time one. `scripts/derive-media.mjs` emits
+   * an AVIF and WebP ladder at four widths, `components/photo.tsx` serves it through
+   * `<picture>`, and `/_next/image` is now on no path at all. A catalogue tile costs about
+   * 4 KB rather than 124 KB and the server does no image work whatsoever.
+   *
+   * The block stays, at its safe settings, because it is what would govern a future
+   * `next/image` if one were added. `remotePatterns` remains a single explicitly configured
+   * origin rather than a wildcard, which would make the endpoint an open proxy; the SVG
+   * settings remain the ones that make our generated placeholders safe to serve. Nothing
+   * here is currently reachable.
+   */
   images: {
-    /*
-     * Product photography is already stored as web-sized JPGs in `public/media`. Running
-     * every tile through Next's on-demand transformer creates a 24-request CPU spike on
-     * Render's 0.1-CPU free instance and can make the whole storefront time out. Serving
-     * the same committed files directly keeps the visual output intact and makes catalog
-     * pages cheap enough for the free tier.
-     */
     unoptimized: true,
-
-    // Newest-first, so browsers get the smallest file they can decode (PERF-002).
     formats: ["image/avif", "image/webp"],
-
-    /*
-     * Only the configured media host may be optimised. A wildcard hostname here turns the
-     * image endpoint into an open proxy: anyone can pass any HTTPS URL and have this server
-     * fetch and re-serve it. The host is configuration, so a real CDN is an environment
-     * change rather than a code change (ADR-012).
-     */
     remotePatterns: buildRemotePatterns(),
-
-    /*
-     * next/image refuses to fetch an upstream image whose hostname resolves to a private
-     * IP, because that is the shape of an SSRF: an attacker supplies a URL and the server
-     * fetches something only the server can reach.
-     *
-     * In local development the media origin is genuinely the other storefront on
-     * `localhost`, so the check has to be relaxed to see real photography while working.
-     * It is gated on NODE_ENV so it cannot reach production, where media is served from a
-     * public CDN over HTTPS (ADR-012) and this must stay off. `buildRemotePatterns` still
-     * limits fetches to the one configured origin either way.
-     */
     dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
-
-    /*
-     * The shared backend still serves generated SVG placeholders for products without
-     * photography. SVG can carry script, so Next refuses it unless this is set; the CSP and
-     * `contentDispositionType` are what make it safe.
-     *
-     * This holds only because every SVG here is generated by us. Customer-uploaded CNIC
-     * documents never pass through next/image at all — they are fetched through a signed
-     * URL by the reviewer, not rendered as catalog media (ADR-024).
-     */
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

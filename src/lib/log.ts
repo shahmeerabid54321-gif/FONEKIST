@@ -1,4 +1,5 @@
 import { AppError } from "@/lib/pk";
+import { unstable_rethrow } from "next/navigation";
 
 /**
  * Server-side structured logging.
@@ -86,21 +87,21 @@ export async function degradeGracefully<T>(
     // are control flow, not failures: swallowing one turns a redirect into a blank section,
     // and swallowing the dynamic bailout makes a page silently render without the data it
     // asked for while logging it as an outage every single build.
-    if (isControlFlow(error)) throw error;
+    unstable_rethrow(error);
+    if (isLegacyControlFlow(error)) throw error;
 
     log.warn(`${operation} failed; rendering without it`, { operation }, error);
     return fallback;
   }
 }
 
-/** True for the errors Next throws to steer rendering rather than to report a fault. */
-function isControlFlow(error: unknown): boolean {
+/** Compatibility with signals emitted by older Next builds and retained test fixtures. */
+function isLegacyControlFlow(error: unknown): boolean {
   const digest = (error as { digest?: unknown })?.digest;
-  if (typeof digest !== "string") return false;
   return (
-    digest === "DYNAMIC_SERVER_USAGE" ||
-    digest === "NEXT_NOT_FOUND" ||
-    digest.startsWith("NEXT_REDIRECT") ||
-    digest.startsWith("BAILOUT_TO_CLIENT_SIDE_RENDERING")
+    typeof digest === "string" &&
+    (digest === "NEXT_NOT_FOUND" ||
+      digest.startsWith("NEXT_REDIRECT") ||
+      digest.startsWith("BAILOUT_TO_CLIENT_SIDE_RENDERING"))
   );
 }

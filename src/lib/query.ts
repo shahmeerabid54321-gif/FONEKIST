@@ -1,4 +1,13 @@
 import { cookies } from "next/headers";
+import {
+  MAX_QUERY,
+  QUERY_COOKIE,
+  QUERY_COOKIE_MAX_AGE,
+  QUERY_COUNT_COOKIE,
+} from "./query-shared";
+
+// Re-exported so server callers keep importing the query from one place.
+export { MAX_QUERY, QUERY_COUNT_COOKIE as QUERY_COUNT_COOKIE_NAME };
 
 /**
  * The query: a shortlist of handsets and the plan chosen for each.
@@ -27,27 +36,24 @@ import { cookies } from "next/headers";
  * from an older build must not throw inside a header that renders on every page.
  */
 
-const QUERY_COOKIE = "fk_query";
-const QUERY_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
-
-/**
- * Three, and there is no reward for filling it.
+/*
+ * `QUERY_COOKIE`, `QUERY_COUNT_COOKIE`, `QUERY_COOKIE_MAX_AGE` and `MAX_QUERY` are in
+ * `query-shared.ts`, because the header badge needs two of them in the browser and this
+ * module cannot go there: it imports `next/headers`.
  *
- * An agreement covers exactly one handset (INST-005), so the query exists to choose between
- * a few phones, not to accumulate them: a fourth row would be a basket pretending to be a
- * decision. Three also keeps every row's full disclosure block, which is five figures and a
- * comparison, readable on a phone screen. The cap is a consequence of the layout and the
- * contract, not a target (ADR-003).
- */
-export const MAX_QUERY = 3;
-
-/**
- * One shortlisted handset.
+ * **Why there are two cookies.** The badge used to be a server render of `queryCount()`, and
+ * reading a cookie on the server makes the page that does it dynamic. Because the header is
+ * on every page, that one read meant not a single page on this site could be static:
+ * measured, it was the difference between roughly 80 and roughly 1,200 requests a second,
+ * and between a document a CDN may cache and one marked `private, no-store`.
  *
- * Short keys because this lives in a cookie that is sent with every request. `h` is the
- * product handle, `v` the variant id, `p` the plan id. Nothing here is a price, a title or
- * anything else that could go stale: those are all re-read at render.
+ * So the count moved to the browser and the shortlist did not. `fk_query` keeps the handles,
+ * variant ids and plan ids and stays `httpOnly`, because that is the capability and a
+ * capability that can be read can be forged. `fk_query_n` holds an integer from zero to
+ * three, which is not: knowing you have two phones shortlisted lets a script do nothing it
+ * could not already do. `writeQuery` is the only place either is set, so they cannot drift.
  */
+
 export interface QueryEntry {
   h: string;
   v: string;
@@ -97,6 +103,7 @@ export async function writeQuery(entries: QueryEntry[]): Promise<void> {
 
   if (capped.length === 0) {
     store.delete(QUERY_COOKIE);
+    store.delete(QUERY_COUNT_COOKIE);
     return;
   }
 
@@ -107,9 +114,25 @@ export async function writeQuery(entries: QueryEntry[]): Promise<void> {
     maxAge: QUERY_COOKIE_MAX_AGE,
     path: "/",
   });
+
+  // Readable, and only ever a number. See the note beside QUERY_COUNT_COOKIE.
+  store.set(QUERY_COUNT_COOKIE, String(capped.length), {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: QUERY_COOKIE_MAX_AGE,
+    path: "/",
+  });
 }
 
-/** How many handsets are on the query. Used by the header badge. */
+/**
+ * How many handsets are on the query.
+ *
+ * Server-side, and no longer used by the header: the badge reads `fk_query_n` in the browser
+ * so that pages stay static. Kept because it is the authoritative count, derived from the
+ * shortlist itself rather than from the mirror, and it is the right thing for any server
+ * code that needs the number without trusting a client-readable cookie.
+ */
 export async function queryCount(): Promise<number> {
   return (await readQuery()).length;
 }

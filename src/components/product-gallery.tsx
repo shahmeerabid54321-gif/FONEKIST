@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Photo } from "@/components/photo";
 import { mediaUrl } from "@/lib/media";
 
 /**
@@ -45,13 +45,13 @@ export function ProductGallery({
             id={`image-${image.id}`}
             className="relative aspect-square w-full shrink-0 snap-center"
           >
-            <Image
+            <Photo
               src={image.url}
               alt={index === 0 ? title : `${title}, view ${index + 1}`}
               fill
               // The first image is the largest contentful paint on this page.
               priority={index === 0}
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              sizes="(max-width: 1024px) 92vw, 38vw"
               className="object-cover"
             />
           </div>
@@ -66,7 +66,7 @@ export function ProductGallery({
                 href={`#image-${image.id}`}
                 className="relative block h-20 w-20 overflow-hidden rounded-[var(--radius-media)] bg-[var(--surface-tile)]"
               >
-                <Image src={image.url} alt="" fill sizes="80px" className="object-cover" />
+                <Photo src={image.url} alt="" fill sizes="80px" className="object-cover" />
                 <span className="sr-only">Show view {index + 1}</span>
               </a>
             </li>

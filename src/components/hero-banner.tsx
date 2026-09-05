@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { Photo } from "@/components/photo";
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -85,7 +85,7 @@ export function HeroBanner({ slides }: { slides: HeroSlide[] }) {
             aria-label={`${index + 1} of ${slides.length}`}
             className="relative min-h-[26rem] overflow-hidden sm:min-h-[32rem]"
           >
-            <Image
+            <Photo
               src={slide.image}
               alt={slide.imageAlt}
               fill

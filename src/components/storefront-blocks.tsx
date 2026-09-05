@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Photo } from "@/components/photo";
 import Link from "next/link";
 import type { Route } from "next";
 import type { ReactNode } from "react";
@@ -178,11 +178,17 @@ function BrandCard({ brand, feature = false }: { brand: BrandTile; feature?: boo
       }`}
     >
       {thumbnail && (
-        <Image
+        <Photo
           src={thumbnail}
           alt=""
           fill
           sizes={feature ? "(max-width: 640px) 90vw, 45vw" : "(max-width: 640px) 90vw, 25vw"}
+          /*
+           * The feature tile is 30rem tall and high on the home page, which makes it the
+           * likely largest contentful paint. It was lazy, so the browser waited for layout
+           * before it would even start fetching the one image the score is measured on.
+           */
+          priority={feature}
           className="tile-media object-cover"
         />
       )}

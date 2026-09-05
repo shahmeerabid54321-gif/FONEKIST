@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { Suspense } from "react";
+import { Photo } from "@/components/photo";
 import Link from "next/link";
 import { brandOf, getProductByHandle, stockLevelFor } from "@/lib/catalog";
 import { listPlans, type PlanView } from "@/lib/installments";
@@ -12,6 +13,7 @@ import { InstallmentDisclosure } from "@/components/installment-disclosure";
 import { ClearQueryButton, RemoveFromQueryButton } from "@/components/query-actions";
 import { EmptyState } from "@/components/ui";
 import { IconCalendar } from "@/components/icons";
+import { RowSkeleton } from "@/components/skeletons";
 
 export const metadata: Metadata = {
   title: "Your query",
@@ -33,8 +35,6 @@ export const metadata: Metadata = {
  * exist offered beside it. It is never dropped silently and never re-pointed at a different
  * plan, because both of those change what the customer chose without telling them.
  */
-export const dynamic = "force-dynamic";
-
 interface ResolvedRow {
   entry: QueryEntry;
   brand: string | null;
@@ -56,7 +56,6 @@ async function resolve(entry: QueryEntry): Promise<ResolvedRow | null> {
   if (!variant) return null;
 
   const plans = await degradeGracefully("query.plans", [], () => listPlans(entry.v));
-
   const brand = brandOf(product);
 
   return {
@@ -71,7 +70,32 @@ async function resolve(entry: QueryEntry): Promise<ResolvedRow | null> {
   };
 }
 
-export default async function QueryPage() {
+/**
+ * The shortlist.
+ *
+ * The rows come from a cookie, so they can never be part of a static shell and never should
+ * be: this is one person's list. The heading and the page frame are everybody's, so they
+ * prerender and the rows stream into them. The practical difference is that clicking
+ * "Query" in the header now paints immediately instead of after three product lookups.
+ */
+export default function QueryPage() {
+  return (
+    <div className="mx-auto max-w-4xl px-5 py-12 sm:px-8">
+      <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)]">Your query</h1>
+      <Suspense
+        fallback={
+          <div className="mt-8">
+            <RowSkeleton rows={2} />
+          </div>
+        }
+      >
+        <QueryRows />
+      </Suspense>
+    </div>
+  );
+}
+
+async function QueryRows() {
   const entries = await readQuery();
 
   const resolved = (await Promise.all(entries.map(resolve))).filter(
@@ -79,9 +103,8 @@ export default async function QueryPage() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-12 sm:px-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)]">Your query</h1>
+    <>
+      <div className="flex flex-wrap items-baseline justify-end gap-4">
         {resolved.length > 0 && <ClearQueryButton />}
       </div>
 
@@ -126,7 +149,7 @@ export default async function QueryPage() {
                       className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[var(--radius-control)] bg-[var(--surface-tile)]"
                     >
                       {row.thumbnail && (
-                        <Image src={row.thumbnail} alt="" fill sizes="96px" className="object-cover" />
+                        <Photo src={row.thumbnail} alt="" fill sizes="96px" className="object-cover" />
                       )}
                     </Link>
 
@@ -223,6 +246,6 @@ export default async function QueryPage() {
           </p>
         </>
       )}
-    </div>
+    </>
   );
 }

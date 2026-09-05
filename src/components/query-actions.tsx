@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { clearQueryAction, removeFromQueryAction, type ActionResult } from "@/app/actions/query";
 import { Button, InlineAlert } from "./ui";
+import { refreshQueryCount } from "./query-badge";
 import { IconClose } from "./icons";
 
 /**
@@ -14,7 +15,11 @@ import { IconClose } from "./icons";
  */
 export function RemoveFromQueryButton({ variantId }: { variantId: string }) {
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    async (_previous, formData) => removeFromQueryAction(formData),
+    async (_previous, formData) => {
+      const result = await removeFromQueryAction(formData);
+      if (result.ok) refreshQueryCount();
+      return result;
+    },
     null,
   );
 
@@ -33,7 +38,11 @@ export function RemoveFromQueryButton({ variantId }: { variantId: string }) {
 /** Empties the query. Only rendered when there is something to empty. */
 export function ClearQueryButton() {
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    async () => clearQueryAction(),
+    async () => {
+      const result = await clearQueryAction();
+      if (result.ok) refreshQueryCount();
+      return result;
+    },
     null,
   );
 

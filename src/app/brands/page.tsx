@@ -9,8 +9,6 @@ export const metadata: Metadata = {
   description: "Every phone brand FONEKIST carries.",
 };
 
-export const revalidate = 300;
-
 /**
  * The brand directory.
  *

@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { BrandSplash, SPLASH_GATE_SCRIPT } from "@/components/brand/splash";
 import { CompareTray } from "@/components/compare-tray";
 import { HeaderOffset } from "@/components/header-offset";
+import { IconSprite } from "@/components/icons";
 import "./globals.css";
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
@@ -74,6 +75,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: SPLASH_GATE_SCRIPT }} />
       </head>
       <body className="flex min-h-screen flex-col">
+        {/*
+          Every icon's geometry, once per document. Before this, each icon was drawn inline
+          at every usage: ninety-eight of them on a catalogue page, and the same path data
+          again in the hydration payload. It has to come before anything that references it.
+        */}
+        <IconSprite />
         {/* A11Y-001: a keyboard user reaches the content without traversing the whole header. */}
         <a
           href="#main"

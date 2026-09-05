@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import type { SearchFacet } from "@/lib/pk";
 import { buildFilterQuery, parseFilters, SORT_OPTIONS } from "@/lib/filters";
@@ -9,6 +10,7 @@ import { CatalogUnavailable } from "@/components/catalog-unavailable";
 import { dynamicRoute } from "@/lib/routes";
 import { degradeGracefully } from "@/lib/log";
 import { features } from "@/lib/features";
+import { CatalogSkeleton, FilterPanelSkeleton } from "@/components/skeletons";
 
 export const metadata: Metadata = {
   title: "Search",
@@ -26,7 +28,35 @@ export const metadata: Metadata = {
  *  - **An empty result set offers a route out.** A dead end with no next step is where a
  *    customer leaves.
  */
-export default async function SearchPage({
+/**
+ * A search page is dynamic by definition: the query is the URL. What is not dynamic is
+ * everything around the results, so that ships first and the hits stream in.
+ */
+export default function SearchPage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<SearchPageSkeleton />}>
+      <SearchPageBody searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+
+function SearchPageSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+      <div className="mt-8 grid gap-10 lg:grid-cols-[16rem_1fr]">
+        <aside>
+          <FilterPanelSkeleton />
+        </aside>
+        <CatalogSkeleton />
+      </div>
+    </div>
+  );
+}
+
+async function SearchPageBody({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

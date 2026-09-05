@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { addToQueryAction, type ActionResult } from "@/app/actions/query";
+import { refreshQueryCount } from "./query-badge";
 import { Button, InlineAlert } from "./ui";
 
 /**
@@ -30,7 +31,13 @@ export function AddToQueryForm({
   disabledReason?: string;
 }) {
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    async (_previous, formData) => addToQueryAction(formData),
+    async (_previous, formData) => {
+      const result = await addToQueryAction(formData);
+      // The action set the count cookie on this response; the badge lives in the layout and
+      // has no way to know that on its own, so it is told.
+      if (result.ok) refreshQueryCount();
+      return result;
+    },
     null,
   );
 

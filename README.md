@@ -31,14 +31,14 @@ pnpm dev                        # :3001
 
 ### Product images in local development
 
-Set `NEXT_PUBLIC_MEDIA_BASE_URL=http://localhost:3000` and run the Voltmark storefront
-alongside (`pnpm --filter storefront dev`).
+Nothing to configure. Leave `NEXT_PUBLIC_MEDIA_BASE_URL` empty and run `pnpm sync:media`,
+which copies the seed's imagery into this repository's own `public/media`. The paths then
+resolve against this origin.
 
-The shared backend stores root-relative media paths like `/media/products/x/01.jpg`, which
-resolve only on the origin whose `public/` the seed wrote them into, and that is Voltmark's.
-FONEKIST is a different origin, so without the base URL every product image 404s. In
-production this variable points at the CDN instead, which is the actual fix (ADR-012
-upstream). See `src/lib/media.ts`.
+This used to say to point the variable at `http://localhost:3000` and run the other
+storefront alongside, which meant FONEKIST loaded its photographs from a second shop that
+merely happened to be on the same machine. In production the variable points at a CDN
+instead (ADR-012 upstream). See `src/lib/media.ts`.
 
 Those images are stand-ins, not photographs of the stock being sold, and must not ship.
 
@@ -70,8 +70,11 @@ system, which FONEKIST does not share (`docs/ADR-001-visual-system.md`).
 ## Commands
 
 ```bash
-pnpm dev              # :3001
-pnpm build
+pnpm dev              # :3001, one process, recompiles per route. Never measure this.
+pnpm build            # also completes the standalone output
+pnpm serve            # production, one worker per core. This is what to measure.
+pnpm start            # production, single process. Use `serve` unless you need this.
+pnpm loadtest         # capacity check against a running `pnpm serve`
 pnpm typecheck
 pnpm lint
 pnpm test             # vitest, including the contracts drift test
@@ -79,6 +82,102 @@ pnpm test:e2e         # playwright, needs the backend on :9000
 pnpm test:a11y        # axe, both colour schemes
 pnpm sync:contracts   # re-vendor from the monorepo
 ```
+
+`pnpm test:e2e` runs against `pnpm dev` by default. The instant-navigation tests in
+`tests/e2e/instant.spec.ts` assert on prerender and cache headers, which only a production
+build sets, so run the suite against one:
+
+```bash
+pnpm build && pnpm serve
+PLAYWRIGHT_BASE_URL=http://localhost:3001 pnpm test:e2e
+```
+
+`pnpm loadtest` fails on response errors and reports throughput by default. Throughput is
+hardware-dependent; set `MIN_RPS_STATIC` and `MIN_RPS_STREAMED` to turn the measured figures
+into regression gates on a fixed deployment runner.
+
+## Performance and capacity
+
+The site is built around one rule: **a page a customer can reach should already exist.**
+
+Every route is prerendered to a static shell at build time. The parts that genuinely depend
+on the request, filters in the URL, a shortlist cookie, a live stock count, are wrapped in
+`<Suspense>` and stream in afterwards. This is Next's Cache Components model, enabled by
+`cacheComponents` and `partialPrefetching` in `next.config.ts`.
+
+Two consequences are worth knowing before changing anything here:
+
+- **A server-side `cookies()` or `headers()` read in a shared component costs the whole site
+  its static shell.** The header badge used to read the query cookie on the server. Measured,
+  that one read was the difference between roughly 80 and roughly 700 requests a second, and
+  between pages a CDN may cache and pages marked `private, no-store`. The count is read in
+  the browser now (`src/components/query-badge.tsx`); the shortlist itself stays `httpOnly`.
+- **Photographs are resized at build time, never per request** (`scripts/derive-media.mjs`,
+  `src/components/photo.tsx`). Four widths in AVIF and WebP, served through `<picture>`, so
+  the server does no image work and `/_next/image` is on no path. A catalogue page on a phone
+  went from 3,199 KB of photography to 462 KB. Run `pnpm derive:media` after changing
+  anything in `public/media`; `pnpm build` and `pnpm dev` both run it, and it skips files
+  whose derivatives are already current. `sharp` is a runtime dependency rather than a dev
+  one only so that a production install still has it at build time; nothing serves an image
+  through it, and Next traces it into `.next/standalone` either way.
+
+- **Catalogue reads are cached for an hour** (`src/lib/catalog.ts`, `src/lib/search.ts`).
+  Price and stock are still decided by commerce and re-read uncached when an application is
+  submitted; the unit count on a product page is read on a short profile so "Only N left" is
+  never an hour old. `POST /api/revalidate` expires a tag on demand for anything urgent.
+
+### Measured on an 8-core laptop, backend running
+
+| Route | req/s | ≈ concurrent visitors | Cacheable by a CDN |
+|---|---|---|---|
+| `/`, `/brands`, `/installments`, `/track`, `/policies/*` | ~715 | ~7,100 | yes, `s-maxage=3600` |
+| `/phones`, `/brands/[handle]`, `/p/[handle]` | ~170-240 | ~1,700-2,400 | no, they read the URL |
+
+Concurrent visitors assume ten seconds of reading between clicks, which is what
+`scripts/loadtest.mjs` reports. Medusa's own latency was flat before, during and after the
+run: the cache absorbs the traffic rather than passing it through.
+
+Absolute figures on a developer machine drift by tens of per cent depending on what else is
+running. Any comparison between two versions should be made the way the note in *Scaling
+further* describes: both builds serving at once on different ports, runs interleaved.
+
+### Photography, per page view
+
+| Page, on a phone | before | after |
+|---|---|---|
+| `/phones`, 24 tiles | 3,199 KB | 462 KB |
+| `/`, 20 images | 2,760 KB | 543 KB |
+| `/p/[handle]`, gallery | 262 KB | 39 KB |
+
+### Scaling further
+
+1. **Put a CDN in front.** The static routes already send `s-maxage=3600,
+   stale-while-revalidate`, so an edge answers them without the origin. This is free and it
+   is the largest single gain available.
+2. **Add cores.** Throughput scales close to linearly with `WORKERS` up to the point where
+   the load generator and the server compete for the same machine: measured 53, 104 and 167
+   req/s on `/phones` at one, two and four workers.
+3. **More than one machine.** Then you need `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` shared
+   across instances, a `deploymentId`, and a shared cache through `cacheHandlers`, because
+   `use cache` is per-process by default and each worker holds its own copy.
+4. **Images are done; the comparison chips are not worth doing.** An earlier note here said
+   the twenty-four chips on a catalogue page cost 47% of its serve throughput and that
+   collapsing them into one delegated listener was the next win. Both halves were wrong, and
+   the correction is worth keeping because it is counter-intuitive.
+
+   Measured properly, with two builds running side by side on separate ports and the runs
+   interleaved (a single machine's readings drift by tens of per cent over minutes, which is
+   what produced the 47%), rendering the chips at all costs **6%**: 84 req/s against 90 with
+   them off. And rebuilding them as server markup driven by one delegated listener made the
+   page **8% slower**, not faster. React serialises a *server* component's whole element tree
+   once per instance into the flight payload, while a *client* component costs one module
+   reference plus its props, so twenty-four identical interactive controls are genuinely
+   cheaper as client components. The flight payload grew 41 KB. On a six-times throttled CPU
+   neither hydration time (0.174s against 0.181s) nor the time to toggle a chip (31.4ms
+   against 30.1ms) could tell the two apart.
+
+   The chips are therefore left exactly as they were. The remaining catalogue cost is the
+   flight payload itself, which is 71% of the document.
 
 ## House rules
 

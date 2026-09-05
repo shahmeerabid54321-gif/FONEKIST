@@ -8,8 +8,8 @@
     "node": ">=22.16.0"
   },
   "scripts": {
-    "dev": "next dev --port 3001",
-    "build": "next build",
+    "dev": "node scripts/derive-media.mjs && next dev --port 3001",
+    "build": "node scripts/derive-media.mjs && next build && node scripts/prepare-standalone.mjs",
     "start": "next start --port 3001",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit",
@@ -17,12 +17,16 @@
     "test:e2e": "playwright test",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "sync:contracts": "node scripts/sync-contracts.mjs",
-    "sync:media": "node scripts/sync-media.mjs"
+    "sync:media": "node scripts/sync-media.mjs && node scripts/derive-media.mjs",
+    "loadtest": "node scripts/loadtest.mjs",
+    "serve": "node scripts/serve.mjs",
+    "derive:media": "node scripts/derive-media.mjs"
   },
   "dependencies": {
     "next": "16.3.2",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "sharp": "^0.35.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -32,6 +36,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
+    "autocannon": "^8.0.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4.0.0",

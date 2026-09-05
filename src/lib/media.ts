@@ -30,3 +30,61 @@ export function mediaUrl(path: string | null | undefined): string | null {
   // Exactly one slash at the join, whatever the two sides look like.
   return `${base.replace(/\/+$/, "")}/${trimmed.replace(/^\/+/, "")}`;
 }
+
+/**
+ * The width ladder, which must agree with `scripts/derive-media.mjs`.
+ *
+ * Named here rather than looked up, because this module is imported by client components and
+ * a manifest of every photograph would be shipped to every browser to answer a question that
+ * a rule answers for free. The build guarantees the rule: `derive-media.mjs` emits all four
+ * widths in both formats for every JPG under `public/media`, and it is a hard build step, so
+ * a missing file is a broken build rather than a broken tile.
+ */
+const DERIVED_WIDTHS = [320, 640, 960, 1280] as const;
+
+export interface MediaSources {
+  /** The original file. Always present, and what a browser with neither modern format gets. */
+  src: string;
+  /** `srcset` for AVIF, or null when this source has no ladder (an SVG, or a remote URL). */
+  avif: string | null;
+  /** `srcset` for WebP. Null under the same conditions as `avif`. */
+  webp: string | null;
+}
+
+/**
+ * Resolves one catalogue path into the sources a `<picture>` needs.
+ *
+ * **Why the derivative paths are derived rather than recorded.** The alternative is a
+ * manifest mapping every source to its derivatives, and this module runs in the browser: that
+ * manifest would be a few kilobytes of JSON on every page to describe images the page mostly
+ * does not use. A rule costs nothing and cannot drift, as long as the build honours it.
+ *
+ * The match is on `/media/<something>.jpg` wherever it appears in the resolved URL, so it
+ * holds equally for a local path and for the same file behind the CDN
+ * (`NEXT_PUBLIC_MEDIA_BASE_URL`, ADR-012): the derivatives sit beside the originals and move
+ * with them.
+ *
+ * Anything else, an SVG placeholder or a remote URL from another origin, returns its `src`
+ * and no srcsets. SVG is vector and already smaller than any derivative; a remote URL is not
+ * ours to have processed.
+ */
+export function mediaSources(path: string | null | undefined): MediaSources | null {
+  const src = mediaUrl(path);
+  if (!src) return null;
+
+  // `mediaUrl` is idempotent, so a caller that already resolved the path is not punished for
+  // passing the result in.
+  const marker = src.indexOf("/media/");
+  const isPhoto = /\.jpe?g$/i.test(src);
+  if (marker === -1 || !isPhoto) return { src, avif: null, webp: null };
+
+  const prefix = src.slice(0, marker);
+  const stem = src.slice(marker + "/media/".length).replace(/\.jpe?g$/i, "");
+
+  const ladder = (extension: "avif" | "webp") =>
+    DERIVED_WIDTHS.map(
+      (width) => `${prefix}/media/derived/${stem}-${width}.${extension} ${width}w`,
+    ).join(", ");
+
+  return { src, avif: ladder("avif"), webp: ladder("webp") };
+}

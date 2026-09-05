@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { EMPLOYMENT_TYPES, PK_PROVINCES } from "@/lib/pk";
 import { submitApplicationAction, type ApplicationResult } from "@/app/actions/installments";
 import type { PlanView } from "@/lib/installments";
@@ -80,6 +80,8 @@ export function InstallmentApplicationForm({
   );
 
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [privacyReset, setPrivacyReset] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
 
   /*
    * How much of the form is filled in.
@@ -94,6 +96,27 @@ export function InstallmentApplicationForm({
    * application will be approved (ADR-003, ADR-024).
    */
   const [filled, setFilled] = useState<Record<string, boolean>>({});
+
+  /*
+   * Cache Components keeps a route in a hidden React Activity after navigation. Preserving
+   * harmless UI state is useful, but preserving a credit form leaves CNICs, income and an
+   * address in hidden DOM. React tears down effects when an Activity becomes hidden, so
+   * that transition is the privacy boundary: clear native fields immediately and discard
+   * React state before the route can be restored.
+   *
+   * `privacyReset` remounts the upload controls as well. A form reset clears their native
+   * file inputs; the remount also removes uploaded document ids and filenames held by the
+   * child components.
+   */
+  useEffect(() => {
+    const form = formRef.current;
+    return () => {
+      form?.reset();
+      setDocuments([]);
+      setFilled({});
+      setPrivacyReset((current) => current + 1);
+    };
+  }, []);
 
   const readProgress = (form: HTMLFormElement) => {
     const data = new FormData(form);
@@ -185,6 +208,7 @@ export function InstallmentApplicationForm({
 
   return (
     <form
+      ref={formRef}
       action={formAction}
       onInput={(event) => readProgress(event.currentTarget)}
       onChange={(event) => readProgress(event.currentTarget)}
@@ -415,7 +439,7 @@ export function InstallmentApplicationForm({
         <div className="grid gap-4 sm:grid-cols-2">
           {REQUIRED_KINDS.map((required) => (
             <DocumentUpload
-              key={required.kind}
+              key={`${privacyReset}:${required.kind}`}
               kind={required.kind}
               label={required.label}
               hint={"hint" in required ? required.hint : undefined}

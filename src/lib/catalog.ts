@@ -1,4 +1,5 @@
-import { AppError, warrantyLabel, type WarrantyType, type DurationUnit } from "@/lib/pk";
+import { cacheLife, cacheTag } from "next/cache";
+import { AppError, type WarrantyType, type DurationUnit } from "@/lib/pk";
 import { medusaFetch } from "./medusa";
 
 /**
@@ -13,8 +14,22 @@ export type StockLevel = "in_stock" | "low_stock" | "out_of_stock" | "preorder";
  * Catalog read model for the storefront.
  *
  * ADR-014: search and listing data may be briefly stale, but price, inventory and payment
- * are revalidated in commerce. Listing reads are therefore cached; the PDP's purchase panel
- * and anything in the application path are not.
+ * are revalidated in commerce.
+ *
+ * **What is cached, and why an hour.** Every read here is a `use cache` scope on an hourly
+ * profile. That is a deliberate widening: the PDP used to read `no-store` on the reasoning
+ * that it states price and stock. The cost of that was one uncached backend round trip per
+ * product view, which is what made the site unusable under any real traffic.
+ *
+ * The reasoning survives the change because an hour-old *presented* figure is not a
+ * *decided* one. Commerce is still the only thing that decides: `actions/installments.ts`
+ * re-reads authoritative price and stock when an application is submitted, and that path is
+ * deliberately uncached. What a customer browses is a catalogue; what they agree to is
+ * revalidated at the moment they agree to it.
+ *
+ * The one figure that may not lag is stock. "Only N left" an hour after N was true is
+ * manufactured scarcity, which CLAUDE.md forbids outright, so the PDP reads live inventory
+ * in its own Suspense boundary rather than taking it from this cache.
  *
  * Nothing here filters for phones. It does not have to: every request carries the FONEKIST
  * publishable key, and the FONEKIST sales channel contains only phones (ADR-022). A
@@ -110,53 +125,92 @@ export function boxContentsOf(product: MedusaProduct): string[] {
 const PRODUCT_FIELDS =
   "*variants.calculated_price,*variants.options,*options.values,*categories,*images,+variants.inventory_quantity,+metadata,+variants.metadata";
 
-export interface ProductListParams {
-  categoryId?: string;
-  limit?: number;
-  offset?: number;
-  order?: string;
-  q?: string;
-}
-
-export async function listProducts(params: ProductListParams = {}): Promise<{
-  products: MedusaProduct[];
-  count: number;
-}> {
-  const search = new URLSearchParams({
-    fields: PRODUCT_FIELDS,
-    limit: String(params.limit ?? 24),
-    offset: String(params.offset ?? 0),
-    // Required: Medusa refuses to calculate prices without a pricing context.
-    region_id: await getRegionId(),
-  });
-  if (params.categoryId) search.set("category_id[]", params.categoryId);
-  if (params.order) search.set("order", params.order);
-  if (params.q) search.set("q", params.q);
-
-  const data = await medusaFetch<{ products: MedusaProduct[]; count: number }>(
-    `/store/products?${search.toString()}`,
-    // Listing data may lag briefly (ADR-014); the PDP revalidates before purchase.
-    { next: { revalidate: 60, tags: ["products"] } },
-  );
-
-  return { products: data.products ?? [], count: data.count ?? 0 };
-}
-
+/**
+ * One product, by handle.
+ *
+ * Cached for an hour and tagged per handle, so correcting a single product upstream can
+ * expire that one entry rather than the whole catalogue. See the note at the top of this
+ * file for why a cached PDP is compatible with commerce owning the price: the figures here
+ * are presented, not decided, and the application path re-reads them uncached.
+ */
 export async function getProductByHandle(handle: string): Promise<MedusaProduct | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`product:${handle}`);
+
+  // Awaited before the constructor rather than inside it. It reads the same either way, but
+  // as an argument it hid a second, serial round trip in the middle of building a query
+  // string, which is the last place anyone looks for one.
+  const regionId = await getRegionId();
+
   const search = new URLSearchParams({
     handle,
     fields: PRODUCT_FIELDS,
     limit: "1",
-    region_id: await getRegionId(),
+    region_id: regionId,
   });
 
   const data = await medusaFetch<{ products: MedusaProduct[] }>(
     `/store/products?${search.toString()}`,
-    // The PDP states price, stock and delivery, so it reads fresh rather than from cache.
-    { cache: "no-store" },
   );
 
   return data.products?.[0] ?? null;
+}
+
+/**
+ * Live inventory for one variant, deliberately uncached.
+ *
+ * This exists because `getProductByHandle` is now cached for an hour, and one figure on the
+ * product page may not be an hour old: "Only 3 left". CLAUDE.md forbids fabricated scarcity
+ * outright, and a count that was true at some point in the last hour, printed as though it
+ * were true now, is exactly that. Everything else on the page tolerates the hour; this does
+ * not, so it is read separately, on every request, inside its own Suspense boundary.
+ *
+ * It returns `null` rather than throwing when commerce cannot be reached. The caller shows
+ * the cached availability *level* in that case, which is a weaker claim ("In stock") and
+ * one we are still willing to stand behind, rather than a number we cannot support.
+ *
+ * **Thirty seconds, not zero.** Reading commerce on literally every request put a backend
+ * round trip on the critical path of every product view and held the page to about 70
+ * requests a second. The `seconds` profile refreshes in the background every second and
+ * expires after a minute, so the count on screen is at most a few seconds old. That is a
+ * real count, which is the requirement; the rule forbids inventing scarcity, not caching a
+ * number briefly. It stays out of the static shell either way, because the profile is short
+ * enough that Next excludes it from prerenders, which is exactly what we want.
+ */
+export async function getLiveStock(
+  handle: string,
+  variantId: string,
+): Promise<{ level: StockLevel; quantity: number | null } | null> {
+  try {
+    return await fetchLiveStock(handle, variantId);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchLiveStock(
+  handle: string,
+  variantId: string,
+): Promise<{ level: StockLevel; quantity: number | null } | null> {
+  "use cache";
+  cacheLife("seconds");
+  cacheTag(`stock:${handle}`);
+
+  const regionId = await getRegionId();
+  const search = new URLSearchParams({
+    handle,
+    fields: PRODUCT_FIELDS,
+    limit: "1",
+    region_id: regionId,
+  });
+
+  const data = await medusaFetch<{ products: MedusaProduct[] }>(
+    `/store/products?${search.toString()}`,
+  );
+
+  const variant = data.products?.[0]?.variants.find((candidate) => candidate.id === variantId);
+  return variant ? stockLevelFor(variant) : null;
 }
 
 export interface MedusaCategory {
@@ -168,20 +222,22 @@ export interface MedusaCategory {
   category_children?: MedusaCategory[];
 }
 
+/**
+ * Every category, which is also every brand (ADR-026).
+ *
+ * The hottest read on the site by a distance: the header and the footer both render the
+ * brand list on every route. Cached, it belongs to the prerendered shell and costs nothing;
+ * uncached, it was the first thing every page in the site waited for.
+ */
 export async function listCategories(): Promise<MedusaCategory[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("categories");
+
   const data = await medusaFetch<{ product_categories: MedusaCategory[] }>(
     "/store/product-categories?fields=id,name,handle,description,parent_category_id,*category_children&limit=100",
-    { next: { revalidate: 300, tags: ["categories"] } },
   );
   return data.product_categories ?? [];
-}
-
-export async function getCategoryByHandle(handle: string): Promise<MedusaCategory | null> {
-  const data = await medusaFetch<{ product_categories: MedusaCategory[] }>(
-    `/store/product-categories?handle=${encodeURIComponent(handle)}&fields=id,name,handle,description,parent_category_id,*category_children&limit=1`,
-    { next: { revalidate: 300, tags: ["categories"] } },
-  );
-  return data.product_categories?.[0] ?? null;
 }
 
 
@@ -193,22 +249,26 @@ export interface MedusaRegion {
   currency_code: string;
 }
 
-let cachedRegionId: string | null = null;
-
 /**
  * Resolves the pricing region.
  *
  * Medusa cannot calculate a price without one, so every catalog read passes `region_id`.
- * The store is single-region and PKR-only (multi-currency is an explicit MVP non-goal), so
- * the id is memoised per server process rather than resolved on each request.
+ * The store is single-region and PKR-only (multi-currency is an explicit MVP non-goal).
+ *
+ * This was a module-level `let`, which memoised it per process and therefore per worker,
+ * per restart and per deploy: on a cold process the first product read paid two serial round
+ * trips instead of one. `use cache` on the longest profile is the same idea done once for
+ * the whole application rather than once per process.
+ *
+ * A missing region still throws. Next does not cache a thrown error, so a backend that is
+ * merely unseeded does not poison the entry for a month.
  */
 export async function getRegionId(): Promise<string> {
-  if (cachedRegionId) return cachedRegionId;
+  "use cache";
+  cacheLife("max");
+  cacheTag("regions");
 
-  const data = await medusaFetch<{ regions: MedusaRegion[] }>(
-    "/store/regions?limit=1",
-    { next: { revalidate: 3600, tags: ["regions"] } },
-  );
+  const data = await medusaFetch<{ regions: MedusaRegion[] }>("/store/regions?limit=1");
 
   const region = data.regions?.[0];
   if (!region) {
@@ -218,7 +278,6 @@ export async function getRegionId(): Promise<string> {
     });
   }
 
-  cachedRegionId = region.id;
   return region.id;
 }
 
@@ -251,123 +310,40 @@ export interface ProductExtras {
  * Specs and warranty come from the custom commerce endpoint rather than being derived in
  * the storefront, so the PDP and the admin agree on exactly one rendering of a value.
  */
+async function fetchProductExtras(
+  productId: string,
+  variantId: string | null,
+): Promise<ProductExtras> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`product-extras:${productId}`);
+
+  const search = new URLSearchParams({ product_id: productId });
+  if (variantId) search.set("variant_id", variantId);
+
+  const data = await medusaFetch<{ data: ProductExtras }>(
+    `/store/electronics/product-details?${search.toString()}`,
+  );
+  return data.data;
+}
+
+/**
+ * The fallback lives outside the cache on purpose.
+ *
+ * If the try/catch were inside the `use cache` scope, a single transient failure would be
+ * cached as "this product has no specs" and every visitor would see that for the next hour.
+ * Out here, a failure is just a failure: nothing is written, and the next request tries
+ * again.
+ */
 export async function getProductExtras(
   productId: string,
   variantId?: string | null,
 ): Promise<ProductExtras> {
-  const search = new URLSearchParams({ product_id: productId });
-  if (variantId) search.set("variant_id", variantId);
-
   try {
-    const data = await medusaFetch<{ data: ProductExtras }>(
-      `/store/electronics/product-details?${search.toString()}`,
-      { next: { revalidate: 120, tags: [`product-extras:${productId}`] } },
-    );
-    return data.data;
+    return await fetchProductExtras(productId, variantId ?? null);
   } catch {
     // Specs are enrichment, not purchase truth. If the endpoint fails the PDP still renders
     // price, stock and delivery rather than erroring the whole page (REL-001).
     return { specs: [], warranty: null };
   }
-}
-
-export function warrantyLabelFrom(extras: ProductExtras): string {
-  return extras.warranty ? warrantyLabel(extras.warranty) : "Warranty information unavailable";
-}
-
-/* ------------------------------------------------------------------- Facets */
-
-export interface CategoryFacet {
-  key: string;
-  label: string;
-  type: "checkbox" | "range";
-  group: string | null;
-  unit: string | null;
-  values: { value: string; label: string; count: number; selected: boolean }[];
-  min?: number;
-  max?: number;
-}
-
-/**
- * Filterable attributes for a category, counted across the given result set.
- * Counts are computed from the products actually returned, so they never promise a
- * combination that yields nothing.
- */
-export async function getCategoryFacets(
-  categoryId: string,
-  productIds: string[],
-): Promise<CategoryFacet[]> {
-  if (productIds.length === 0) return [];
-
-  const search = new URLSearchParams({
-    category_id: categoryId,
-    product_ids: productIds.join(","),
-  });
-
-  const data = await medusaFetch<{ data: { facets: CategoryFacet[] } }>(
-    `/store/electronics/facets?${search.toString()}`,
-    { next: { revalidate: 120 } },
-  );
-
-  return data.data.facets;
-}
-
-/**
- * Attribute values for a set of products, used to apply spec filters.
- *
- * ADR-014 permits this to lag briefly; it is discovery data, and the PDP and application
- * revalidate anything that affects the purchase.
- */
-export async function getProductAttributeMap(
-  productIds: string[],
-): Promise<Record<string, Record<string, string[]>>> {
-  if (productIds.length === 0) return {};
-
-  const data = await medusaFetch<{ data: { products: Record<string, Record<string, string[]>> } }>(
-    `/store/electronics/attribute-map?product_ids=${productIds.join(",")}`,
-    { next: { revalidate: 120 } },
-  );
-
-  return data.data.products;
-}
-
-/**
- * Warranty labels for a set of products, for listing cards (CUST-008).
- * Batched so a grid renders with one request rather than one per card.
- */
-export async function getWarrantyLabels(productIds: string[]): Promise<Record<string, string>> {
-  if (productIds.length === 0) return {};
-
-  const data = await medusaFetch<{ data: { labels: Record<string, string> } }>(
-    `/store/electronics/warranty-labels?product_ids=${productIds.join(",")}`,
-    { next: { revalidate: 300, tags: ["warranty-labels"] } },
-  );
-
-  return data.data.labels;
-}
-
-/**
- * The two or three decisive specs shown on each listing card
- * (06_DESIGN_SYSTEM.md section 13). Which specs are decisive is category-specific.
- */
-export async function getCardSpecs(
-  categoryId: string,
-  products: { id: string; variantId: string | null }[],
-): Promise<Record<string, { label: string; value: string }[]>> {
-  if (products.length === 0) return {};
-
-  const search = new URLSearchParams({
-    category_id: categoryId,
-    product_ids: products.map((product) => product.id).join(","),
-    // Positionally aligned with product_ids so variant-scoped specs (memory, storage)
-    // resolve to the variant each card actually shows.
-    variant_ids: products.map((product) => product.variantId ?? "").join(","),
-  });
-
-  const data = await medusaFetch<{ data: { specs: Record<string, { label: string; value: string }[]> } }>(
-    `/store/electronics/card-specs?${search.toString()}`,
-    { next: { revalidate: 300 } },
-  );
-
-  return data.data.specs;
 }

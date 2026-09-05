@@ -41,8 +41,6 @@ import { dynamicRoute } from "@/lib/routes";
  * countdown, a carousel that moves on its own, star ratings, testimonials, a "trending"
  * rail derived from nothing, and any number that was not counted or configured.
  */
-export const revalidate = 60;
-
 const COLLECTIONS = [
   { label: "All phones", href: "/phones" },
   { label: "Under Rs 50,000", href: "/phones?price_max=50000&in_stock=1" },
