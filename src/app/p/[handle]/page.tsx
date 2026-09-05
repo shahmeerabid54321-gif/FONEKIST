@@ -18,11 +18,10 @@ import { displayName } from "@/lib/product-name";
 import { publicEnv } from "@/lib/env";
 import { search } from "@/lib/search";
 import { brandHandle } from "@/lib/brands";
+import { dynamicRoute } from "@/lib/routes";
 import { hitToCard, ProductGrid } from "@/components/product-grid";
 import { SectionHead } from "@/components/storefront-blocks";
-import { AddToCartForm } from "@/components/add-to-cart-form";
 import { PlanSelector } from "@/components/plan-selector";
-import { Price } from "@/components/price";
 import { ProductGallery } from "@/components/product-gallery";
 import { SpecTable } from "@/components/spec-table";
 import { VariantSelector } from "@/components/variant-selector";
@@ -81,9 +80,7 @@ export default async function ProductPage({
 
   const [extras, plans, related] = await Promise.all([
     getProductExtras(product.id, variant.id),
-    features.installments
-      ? degradeGracefully("pdp.plans", [], () => listPlans(variant.id))
-      : Promise.resolve([]),
+    degradeGracefully("pdp.plans", [], () => listPlans(variant.id)),
     /*
      * Same brand, in stock. A page that ends at the specification table gives a reader who
      * has decided against this handset nowhere to go but the back button, and brand is the
@@ -173,25 +170,43 @@ export default async function ProductPage({
             </p>
           )}
 
+          {/*
+            The plans, or a plain statement that there are none.
+
+            There is no cash fallback to render here any more. This site sells on
+            installments only, so a handset with no authored plan is a handset that cannot
+            be acquired today, and saying so is more use than a price nobody can pay.
+
+            The listing is deliberately not filtered to hide it: which products FONEKIST may
+            sell is decided by the sales channel upstream, and a second filter here would be
+            a weaker copy of that rule (ADR-022).
+          */}
           <div className="mt-7">
-            {features.installments && plans.length > 0 ? (
+            {plans.length > 0 ? (
               <PlanSelector
+                handle={product.handle}
+                title={displayName(product.title, brand)}
                 variantId={variant.id}
-                cashPrice={price.amount}
-                compareAt={price.compareAt}
                 plans={plans}
-                /*
-                 * `?pay=installments` opens the panel on the plans.
-                 *
-                 * It is set by the things a customer presses to say that is how they intend
-                 * to buy: the monthly line on a card, the installments rails on the home
-                 * page, the listing filtered to plans. Arriving at a product page any other
-                 * way still opens on the cash price, which is the rule that matters.
-                 */
-                initialMode={query.pay === "installments" ? "installments" : "cash"}
+                disabled={outOfStock}
+                disabledReason="Out of stock."
               />
             ) : (
-              <Price amount={price.amount} compareAt={price.compareAt} size="large" />
+              <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-sunken)] p-5">
+                <p className="text-sm font-medium text-[var(--text)]">
+                  This handset is not available on a plan yet.
+                </p>
+                <p className="mt-1.5 text-sm text-[var(--text-soft)]">
+                  We sell on installments only, so there is nothing to apply for on this one
+                  at the moment.
+                </p>
+                <Link
+                  href={dynamicRoute("/phones?installments=1")}
+                  className="mt-4 inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-[var(--line-strong)] px-5 text-sm font-medium text-[var(--text)]"
+                >
+                  See phones on a plan
+                </Link>
+              </div>
             )}
           </div>
 
@@ -209,14 +224,6 @@ export default async function ProductPage({
                   : "In stock"}
             {extras.warranty ? ` · ${extras.warranty.label}` : ""}
           </p>
-
-          <div className="mt-5">
-            <AddToCartForm
-              variantId={variant.id}
-              disabled={outOfStock}
-              disabledReason="Out of stock"
-            />
-          </div>
 
           {/*
             The shortlist button, not a link that starts a comparison of one.
@@ -241,7 +248,7 @@ export default async function ProductPage({
             <div className="flex items-baseline gap-4 py-3">
               <dt className="w-24 shrink-0 text-[var(--text-muted)]">Delivery</dt>
               <dd className="text-[var(--text-soft)]">
-                Estimate and cost at checkout.{" "}
+                Arranged once your application is approved.{" "}
                 <Link href="/policies/delivery" className="underline">
                   Terms
                 </Link>

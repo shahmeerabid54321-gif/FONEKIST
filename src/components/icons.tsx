@@ -175,12 +175,19 @@ export function IconSearch(props: IconProps) {
   );
 }
 
-export function IconCart(props: IconProps) {
+/**
+ * The query.
+ *
+ * A shortlist on a clipboard, not a trolley. This site does not sell anything from a
+ * basket: what a customer builds here is a handful of handsets and plans they are choosing
+ * between, and a cart glyph would promise a checkout that does not exist.
+ */
+export function IconQuery(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M2.6 3.4h2.6l2.3 11.2a1.7 1.7 0 0 0 1.68 1.36h7.9a1.7 1.7 0 0 0 1.68-1.4l1.34-7.36H6.1" />
-      <circle cx="9.4" cy="20" r="1.4" />
-      <circle cx="17.6" cy="20" r="1.4" />
+      <path d="M9 3.4h6a1 1 0 0 1 1 1v1.2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.4a1 1 0 0 1 1-1Z" />
+      <path d="M16 5.4h1.9a1.9 1.9 0 0 1 1.9 1.9v12.3a1.9 1.9 0 0 1-1.9 1.9H6.1a1.9 1.9 0 0 1-1.9-1.9V7.3a1.9 1.9 0 0 1 1.9-1.9H8" />
+      <path d="m8.4 12.4 1.6 1.6 3.2-3.2M8.4 17.6h7.2" />
     </Icon>
   );
 }

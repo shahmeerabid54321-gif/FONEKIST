@@ -1,14 +1,14 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { Suspense } from "react";
-import { cartItemCount, getCart } from "@/lib/cart";
+import { queryCount } from "@/lib/query";
 import { features } from "@/lib/features";
 import { degradeGracefully } from "@/lib/log";
 import { listBrands } from "@/lib/brands";
 import { FonekistWordmark } from "./brand/logo";
 import { NavLink } from "./nav-link";
 import { SearchBox } from "./search-box";
-import { IconCalendar, IconCart, IconCompare, IconHandset, IconTruck } from "./icons";
+import { IconCalendar, IconCompare, IconHandset, IconQuery, IconTruck } from "./icons";
 
 /**
  * Site header.
@@ -17,8 +17,8 @@ import { IconCalendar, IconCart, IconCompare, IconHandset, IconTruck } from "./i
  * name, and the previous header buried the field at the end of a row of five equal-weight
  * text links, which made looking something up the hardest thing on the page.
  *
- * The cart count reads a cookie, which makes whatever renders it dynamic. It is isolated in
- * its own suspended component so that is the only part of the header the cookie affects,
+ * The query count reads a cookie, which makes whatever renders it dynamic. It is isolated
+ * in its own suspended component so that is the only part of the header the cookie affects,
  * rather than the whole shell of every page on the site.
  *
  * The brand list is read through `degradeGracefully`: a header that throws takes down every
@@ -72,14 +72,12 @@ export async function SiteHeader() {
                 Phones
               </NavLink>
             </li>
-            {features.installments && (
-              <li className="shrink-0">
-                <NavLink href="/installments" matchNested>
-                  <IconCalendar />
-                  Installments
-                </NavLink>
-              </li>
-            )}
+            <li className="shrink-0">
+              <NavLink href="/installments" matchNested>
+                <IconCalendar />
+                How it works
+              </NavLink>
+            </li>
             {features.comparison && (
               <li className="shrink-0">
                 <NavLink href="/compare">
@@ -102,8 +100,8 @@ export async function SiteHeader() {
           fallback is the same link without a number: a cart link that says "0" while the
           count is still loading is a claim we have not checked yet.
         */}
-        <Suspense fallback={<CartLink count={0} />}>
-          <CartCount />
+        <Suspense fallback={<QueryLink count={0} />}>
+          <QueryCount />
         </Suspense>
       </div>
 
@@ -128,31 +126,31 @@ export async function SiteHeader() {
 }
 
 /**
- * The cart count.
+ * The query count.
  *
- * Reads the cart cookie, so this is the one dynamic thing in the header. A failure renders
+ * Reads the query cookie, so this is the one dynamic thing in the header. A failure renders
  * the link with no number rather than with a zero: "no count" is honest, "0" is a claim
- * about the cart that we could not actually check.
+ * about the shortlist that we could not actually check.
  */
-async function CartCount() {
-  const cart = await degradeGracefully("header.cart", null, () => getCart());
-  return <CartLink count={cartItemCount(cart)} />;
+async function QueryCount() {
+  const count = await degradeGracefully("header.query", 0, () => queryCount());
+  return <QueryLink count={count} />;
 }
 
-function CartLink({ count }: { count: number }) {
+function QueryLink({ count }: { count: number }) {
   return (
     <Link
-      href="/cart"
+      href="/query"
       className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-chip)] bg-[var(--text)] px-5 text-sm font-semibold text-[var(--surface)] transition-opacity duration-200 [transition-timing-function:var(--ease-brand)] hover:opacity-90"
     >
-      <IconCart />
-      Cart
+      <IconQuery />
+      Query
       {count > 0 && (
         <>
           <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--surface)] px-1 font-mono text-[11px] text-[var(--text)]">
             {count}
           </span>
-          <span className="sr-only">items</span>
+          <span className="sr-only">phones</span>
         </>
       )}
     </Link>

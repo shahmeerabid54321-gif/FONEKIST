@@ -156,7 +156,7 @@ const STATUS_COPY: Record<string, string> = {
   approved:
     "Approved. We will call you to arrange the advance and the paperwork. We never ask for card or bank details by phone.",
   rejected:
-    "We were not able to approve this one. The handset has been released. You can still buy it outright or with cash on delivery.",
+    "We were not able to approve this one. The handset has been released and nothing was charged. You are welcome to apply again.",
   expired:
     "We did not manage to finish reviewing this in time, so the handset was released. Nothing was charged and you are welcome to apply again.",
   cancelled: "This application was cancelled. Nothing was charged.",

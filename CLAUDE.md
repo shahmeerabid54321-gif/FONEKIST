@@ -49,8 +49,13 @@ The plan this is being built from lives at
   logo's own black, applied through `.on-inverse` (ADR-003). There is no `--color-deep`.
 - **Never edit `src/components/brand/logo-paths.ts`.** It is traced from
   `docs/brand/logo-source.jpeg`. Re-trace, do not nudge coordinates.
-- **"Buy now, pay later" is gated on `NEXT_PUBLIC_FEATURE_INSTALLMENTS`,** logo tagline
-  included. With installments off it advertises a page the site will not show (ADR-002).
+- **`NEXT_PUBLIC_FEATURE_INSTALLMENTS` gates intake, not the shop.** The storefront sells
+  on installments only, so the flag can no longer hide the plans, the disclosure or the
+  query without hiding the entire proposition. What it withholds is what the ADR-025 legal
+  review is about: `/installments/apply` and `/installments/status`, the two pages that
+  collect a CNIC. With it off the plan panel hands the customer to WhatsApp with their
+  chosen plan instead. The logo tagline is no longer gated, because there is no state in
+  which this site is not a buy-now-pay-later site (supersedes ADR-002 on that point).
 - **No ratings, review counts or customer totals.** There is no review data.
 - **No fabricated urgency, scarcity or savings.** A compare-at price shows only when it is
   genuinely higher; "only N left" only when N is the real count.
@@ -60,6 +65,14 @@ The plan this is being built from lives at
 - **No em dash or en dash in customer-visible text.**
 - **Price, stock and payment are never decided here.** Commerce is authoritative; the
   storefront composes and presents.
+- **There is no cart and nothing is bought on the site.** Every pay-in-full path was
+  removed: no `/cart`, no `/checkout`, no COD, no promotions, no quantity. The customer's
+  shortlist is the *query* (`lib/query.ts`), which holds handles, variant ids and plan ids
+  in a cookie and no money at all, so every figure on `/query` is re-read from commerce at
+  render. `lib/reservation.ts` is the one place a Medusa cart is still built, because
+  `POST /store/installment-applications` takes a `cart_id`; it is not a customer cart and
+  nothing may render it. The cash price survives only as the comparison figure inside the
+  disclosure.
 - **`serverEnv` must never reach client code.** It throws if it does.
 - **Feature flags default off.** Only the exact string "true" enables one.
 - WCAG 2.2 AA is part of Definition of Done, checked by axe in both colour schemes.
@@ -77,12 +90,18 @@ Changing any of these means changing the monorepo too, and the two must land tog
 
 ## Status
 
-All workstreams are built. Home, `/phones`, brand pages, PDP, comparison, search, cart,
-checkout, tracking, returns, policies, the installment disclosure, the credit application
-and the admin review queue all run against the live backend.
+All workstreams are built. Home, `/phones`, brand pages, PDP, comparison, search, the
+query, tracking, returns, policies, the installment disclosure, the credit application and
+the admin review queue all run against the live backend.
+
+The storefront is installments-only. The cart and checkout were removed; `/cart` and
+`/checkout` redirect to `/query`. Order tracking and returns are kept, because an approved
+agreement still produces a real order, and the COD branches in `lib/orders.ts` are kept
+deliberately so orders placed before the change still render honestly.
 
 Both feature flags are enabled locally. `NEXT_PUBLIC_FEATURE_INSTALLMENTS` must stay off in
-any shared environment until the legal review in ADR-025 clears.
+any shared environment until the legal review in ADR-025 clears; with it off the site still
+browses and shortlists, and only CNIC intake is withheld.
 
 Blocking public launch, unchanged: real product photography. The imagery is stand-in and
 shipping it would misrepresent the goods.

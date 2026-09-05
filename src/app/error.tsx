@@ -5,9 +5,9 @@ import { Button } from "@/components/ui";
 /**
  * Route error boundary.
  *
- * Always recoverable, because Next gives us a reset handler. The copy says the cart is safe
+ * Always recoverable, because Next gives us a reset handler. The copy says the query is safe
  * because that is the first thing somebody worries about when a shop page breaks, and it is
- * true: the cart lives in commerce behind an httpOnly cookie, not in this render.
+ * true: the query lives in an httpOnly cookie, not in this render.
  */
 export default function RouteError({ reset }: { error: Error; reset: () => void }) {
   return (
@@ -16,7 +16,7 @@ export default function RouteError({ reset }: { error: Error; reset: () => void 
         We could not load this page
       </h1>
       <p className="mt-3 text-[var(--text-soft)]">
-        Something went wrong at our end. Your cart is safe.
+        Something went wrong at our end. Your query is safe.
       </p>
       <div className="mt-6">
         <Button tone="secondary" onClick={reset}>

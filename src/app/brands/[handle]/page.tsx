@@ -3,14 +3,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { brandHandle, formatPkr, type SearchFacet } from "@/lib/pk";
-import { getBrand } from "@/lib/brands";
+import { type Brand, getBrand } from "@/lib/brands";
 import { buildFilterQuery, parseFilters, SORT_OPTIONS } from "@/lib/filters";
 import { mediaUrl } from "@/lib/media";
 import { features } from "@/lib/features";
 import { search } from "@/lib/search";
 import { hitToCard, ProductGrid } from "@/components/product-grid";
 import { FilterPanel } from "@/components/filter-panel";
+import { CatalogUnavailable } from "@/components/catalog-unavailable";
 import { dynamicRoute } from "@/lib/routes";
+import { degradeGracefully } from "@/lib/log";
 
 export async function generateMetadata({
   params,
@@ -18,7 +20,7 @@ export async function generateMetadata({
   params: Promise<{ handle: string }>;
 }): Promise<Metadata> {
   const { handle } = await params;
-  const brand = await getBrand(handle);
+  const brand = await degradeGracefully("brand.metadata", null, () => getBrand(handle));
   if (!brand) return { title: "Brand not found" };
   return {
     title: brand.name,
@@ -60,26 +62,56 @@ export default async function BrandPage({
     redirect(`/brands/${canonical}`);
   }
 
-  const brand = await getBrand(handle);
-  if (!brand) notFound();
+  /*
+   * Three outcomes, and they must not be confused with each other.
+   *
+   * `null` is the backend answering that there is no such brand, and it 404s. `undefined` is
+   * the backend not answering at all, and it must not: telling somebody who followed a link
+   * to `/brands/samsung` that the page does not exist, because a request timed out, retires
+   * a URL that is fine. That case falls through to the unavailable state below.
+   */
+  const brand = await degradeGracefully<Brand | null | undefined>(
+    "brand.detail",
+    undefined,
+    () => getBrand(handle),
+  );
+  if (brand === null) notFound();
 
   const state = parseFilters(await searchParams);
 
-  const results = await search({
-    q: "",
-    // The brand comes from the route, not from the filter panel, so it cannot be removed
-    // from within the page and silently turn a brand page into the whole catalogue.
-    brands: [brand.handle],
-    priceMin: state.priceMin,
-    priceMax: state.priceMax,
-    inStockOnly: state.inStockOnly,
-    monthlyMax: state.monthlyMax,
-    installmentsOnly: state.installmentsOnly,
-    attributes: state.attributes,
-    sort: state.sort,
-    page: state.page,
-    perPage: 24,
-  });
+  const results = brand
+    ? await degradeGracefully("brand.search", null, () =>
+        search({
+          q: "",
+          // The brand comes from the route, not from the filter panel, so it cannot be
+          // removed from within the page and silently turn a brand page into the whole
+          // catalogue.
+          brands: [brand.handle],
+          priceMin: state.priceMin,
+          priceMax: state.priceMax,
+          inStockOnly: state.inStockOnly,
+          monthlyMax: state.monthlyMax,
+          installmentsOnly: state.installmentsOnly,
+          attributes: state.attributes,
+          sort: state.sort,
+          page: state.page,
+          perPage: 24,
+        }),
+      )
+    : null;
+
+  if (!brand || !results) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)] sm:text-4xl">
+          {brand?.name ?? "This brand"}
+        </h1>
+        <div className="mt-8">
+          <CatalogUnavailable retryHref={dynamicRoute(`/brands/${canonical ?? handle}`)} />
+        </div>
+      </div>
+    );
+  }
 
   // The brand facet is suppressed here: on a brand page it can only ever offer the brand
   // already being viewed.
@@ -171,7 +203,7 @@ export default async function BrandPage({
                   </dd>
                 </div>
               )}
-              {features.installments && cheapestMonthly != null && (
+              {cheapestMonthly != null && (
                 <div>
                   <dt className="brand-eyebrow text-[var(--on-inverse-muted)]">
                     Or monthly from
@@ -184,7 +216,7 @@ export default async function BrandPage({
             </dl>
           )}
 
-          {features.installments && cheapestMonthly != null && (
+          {cheapestMonthly != null && (
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href={dynamicRoute(`/brands/${brand.handle}?installments=1&in_stock=1`)}

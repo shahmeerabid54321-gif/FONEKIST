@@ -62,9 +62,7 @@ const POLICY_ICON: Record<string, typeof IconDocument> = {
  * the red dot.
  */
 export async function SiteFooter() {
-  const policies = Object.values(POLICIES).filter(
-    (policy) => policy.slug !== "installments" || features.installments,
-  );
+  const policies = Object.values(POLICIES);
 
   // A footer that throws takes down every page it sits on, and a missing brand rail is not
   // worth that.
@@ -111,7 +109,7 @@ export async function SiteFooter() {
           */}
           <FonekistLockup
             label="FONEKIST"
-            tagline={features.installments}
+            tagline
             className="h-auto w-60 text-[var(--on-inverse)]"
           />
           <p className="mt-6 max-w-xs text-sm leading-relaxed text-[var(--text-soft)]">
@@ -119,15 +117,13 @@ export async function SiteFooter() {
             listing.
           </p>
 
-          {features.installments && (
-            <Link
-              href="/installments"
-              className="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-chip)] bg-[var(--on-inverse)] px-6 text-sm font-semibold text-[var(--surface-inverse)] transition-transform duration-200 [transition-timing-function:var(--ease-brand)] hover:scale-[1.02]"
-            >
-              <IconCalendar />
-              How installments work
-            </Link>
-          )}
+          <Link
+            href="/installments"
+            className="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-chip)] bg-[var(--on-inverse)] px-6 text-sm font-semibold text-[var(--surface-inverse)] transition-transform duration-200 [transition-timing-function:var(--ease-brand)] hover:scale-[1.02]"
+          >
+            <IconCalendar />
+            How installments work
+          </Link>
         </div>
 
         <nav aria-labelledby="footer-shop">
@@ -161,14 +157,12 @@ export async function SiteFooter() {
                 Track an order
               </Link>
             </li>
-            {features.installments && (
-              <li>
-                <Link href="/installments/status" className="nav-pill nav-pill-flush inline-flex items-center gap-2.5 text-[var(--text-soft)]">
-                  <IconDocument />
-                  Check an application
-                </Link>
-              </li>
-            )}
+            <li>
+              <Link href="/installments/status" className="nav-pill nav-pill-flush inline-flex items-center gap-2.5 text-[var(--text-soft)]">
+                <IconDocument />
+                Check an application
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -260,7 +254,7 @@ export async function SiteFooter() {
       <div className="border-t border-[var(--line)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-6 text-xs text-[var(--text-muted)] sm:px-8">
           <p>Prices in Pakistani rupees, inclusive of applicable duty unless a listing says otherwise.</p>
-          <p>Delivery is charged and is quoted before you pay.</p>
+          <p>Delivery is charged and is quoted before anything is dispatched.</p>
         </div>
       </div>
     </footer>

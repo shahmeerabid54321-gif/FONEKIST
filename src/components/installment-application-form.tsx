@@ -223,6 +223,28 @@ export function InstallmentApplicationForm({
         </div>
       </section>
 
+      {/*
+        What to have to hand, on the page where it is needed.
+
+        This list used to live on the installments landing page, which somebody reads to
+        decide whether to apply at all, before they have chosen a handset. Knowing you need
+        a guarantor is only useful once you are filling the form in, and finding out four
+        sections down that a second person's CNIC is required is how a half-finished
+        application gets abandoned.
+      */}
+      <section aria-labelledby="need-heading">
+        <h2 id="need-heading" className="flex items-center gap-2.5 text-lg font-semibold text-[var(--text)]">
+          <BrandPip />
+          What you need
+        </h2>
+        <ul className="mt-4 max-w-2xl space-y-2 text-sm text-[var(--text-soft)]">
+          <li>Your CNIC, both sides.</li>
+          <li>A guarantor, and their CNIC, both sides. It must be someone other than you.</li>
+          <li>To be 18 or older.</li>
+          <li>A phone number and email we can reach you on.</li>
+        </ul>
+      </section>
+
       <section aria-labelledby="you-heading" className="space-y-5">
         <h2 id="you-heading" className="flex items-center gap-2.5 text-lg font-semibold text-[var(--text)]">
           <BrandPip />

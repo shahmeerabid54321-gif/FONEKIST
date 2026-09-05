@@ -21,7 +21,6 @@ test.describe("the disclosure block", () => {
   test("a monthly figure is never shown without the total beside it", async ({ page }) => {
     await page.goto(await firstPhoneWithPlans(page));
 
-    await page.getByRole("tab", { name: "Installments" }).click();
 
     // Every figure, on one screen, inside the one disclosure block. This is the whole point.
     const disclosure = page.locator("dl").first();
@@ -34,7 +33,6 @@ test.describe("the disclosure block", () => {
 
   test("the stated total equals the arithmetic printed beside it", async ({ page }) => {
     await page.goto(await firstPhoneWithPlans(page));
-    await page.getByRole("tab", { name: "Installments" }).click();
 
     const rupees = async (label: string): Promise<number> => {
       const row = page.locator("dl div").filter({ hasText: label }).first();
@@ -69,7 +67,6 @@ test.describe("the disclosure block", () => {
     page,
   }) => {
     await page.goto(await firstPhoneWithPlans(page));
-    await page.getByRole("tab", { name: "Installments" }).click();
 
     const difference = page.getByText(/more than paying cash/);
     await expect(difference).toBeVisible();
@@ -78,22 +75,36 @@ test.describe("the disclosure block", () => {
     await expect(difference).toContainText(/Rs [\d,]+/);
   });
 
-  test("cash is the default, so the monthly figure never poses as the price", async ({ page }) => {
+  test("there is no way to buy the handset outright", async ({ page }) => {
     await page.goto(await firstPhoneWithPlans(page));
 
-    // Defaulting to installments would make an expensive handset look cheap by hiding what
-    // it costs, which is the exact trick this storefront exists to avoid.
-    await expect(page.getByRole("tab", { name: "Pay in full" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    // The cash rail is gone. What used to be a "Pay in full" tab beside a live "Add to
+    // cart" button is now nothing at all, because this storefront sells on installments
+    // only and a control that starts a purchase it cannot finish is worse than no control.
+    await expect(page.getByRole("tab", { name: "Pay in full" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Add to cart" })).toHaveCount(0);
+    await expect(page.locator("a[href='/cart'], a[href='/checkout']")).toHaveCount(0);
+
+    // The cash price survives as the comparison figure and nowhere else: it is the first
+    // row of the disclosure and the thing "more than paying cash" is measured against.
+    // Outside that block it would read as a price somebody could pay (ADR-025).
+    await expect(page.locator("dl").first().getByText("Cash price", { exact: true })).toBeVisible();
+  });
+
+  test("the plans are on screen without pressing anything", async ({ page }) => {
+    await page.goto(await firstPhoneWithPlans(page));
+
+    // The disclosure used to sit behind a tab most people never pressed, which meant the
+    // one thing this site does better than its references was optional. INST-004 now holds
+    // by construction: there is no state in which the panel shows less than everything.
+    await expect(page.getByRole("group", { name: /Choose a plan/i })).toBeVisible();
+    await expect(page.getByText("Total you pay")).toBeVisible();
   });
 });
 
 test.describe("the application", () => {
   test("shows the terms in full and the plan above the form", async ({ page }) => {
     await page.goto(await firstPhoneWithPlans(page));
-    await page.getByRole("tab", { name: "Installments" }).click();
     await page.getByRole("link", { name: "Apply for this plan" }).click();
 
     await expect(page).toHaveURL(/\/installments\/apply/);
@@ -112,7 +123,6 @@ test.describe("the application", () => {
 
   test("cannot be submitted before the documents are uploaded", async ({ page }) => {
     await page.goto(await firstPhoneWithPlans(page));
-    await page.getByRole("tab", { name: "Installments" }).click();
     await page.getByRole("link", { name: "Apply for this plan" }).click();
 
     await expect(page.getByRole("button", { name: "Submit application" })).toBeDisabled();
@@ -121,7 +131,6 @@ test.describe("the application", () => {
 
   test("says plainly that nothing is charged", async ({ page }) => {
     await page.goto(await firstPhoneWithPlans(page));
-    await page.getByRole("tab", { name: "Installments" }).click();
     await page.getByRole("link", { name: "Apply for this plan" }).click();
 
     await expect(page.getByText(/Nothing is charged when you/).first()).toBeVisible();

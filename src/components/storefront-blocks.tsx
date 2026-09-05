@@ -103,9 +103,9 @@ export function Section({
  * than it buys.
  */
 const TRUST: { label: string; detail: string; Icon: typeof IconShieldCheck }[] = [
-  { label: "PTA status stated", detail: "On every listing, before you buy", Icon: IconShieldCheck },
-  { label: "Warranty recorded", detail: "Terms saved against your order", Icon: IconCalendar },
-  { label: "Cash on delivery", detail: "Available in most cities", Icon: IconBanknote },
+  { label: "PTA status stated", detail: "On every listing, before you apply", Icon: IconShieldCheck },
+  { label: "Warranty recorded", detail: "Terms saved against your agreement", Icon: IconCalendar },
+  { label: "Nothing charged online", detail: "No payment is taken on this site", Icon: IconBanknote },
   { label: "Total shown upfront", detail: "Every plan, before you apply", Icon: IconTruck },
 ];
 

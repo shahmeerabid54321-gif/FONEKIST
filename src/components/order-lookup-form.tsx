@@ -24,7 +24,7 @@ export function OrderLookupForm() {
       <PhoneField
         id="lookup-phone"
         name="phone"
-        label="Mobile number used at checkout"
+        label="Mobile number on your application"
         required
         hint="We use this to confirm the order is yours."
       />

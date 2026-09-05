@@ -27,7 +27,7 @@ const ROUTES = [
   "/installments/status",
   "/compare",
   "/search?q=galaxy",
-  "/cart",
+  "/query",
   "/track",
   "/policies/installments",
 ] as const;

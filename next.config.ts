@@ -106,6 +106,22 @@ const config: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
+  /*
+   * The cash rail is gone, and its URLs are in the wild.
+   *
+   * `/cart` and `/checkout` were live routes on the deployed site, so they are in browser
+   * histories, bookmarks and whatever search engines have indexed. A 404 for them would
+   * read as a broken shop rather than a changed one, so both land on the query, which is
+   * the nearest thing the site still has to "the phones I picked".
+   */
+  async redirects() {
+    return [
+      { source: "/cart", destination: "/query", permanent: true },
+      { source: "/checkout", destination: "/query", permanent: true },
+      { source: "/checkout/:path*", destination: "/query", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {

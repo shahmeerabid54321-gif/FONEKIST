@@ -20,7 +20,7 @@ type Tone = "primary" | "secondary" | "quiet" | "danger";
  *
  * A primary button appears on nearly every page, so filling it with the trust colour was
  * one of the two reasons the site read green; the other was the focus ring. Ink on paper is
- * also the treatment the header's cart pill already used, so the site now has one
+ * also the treatment the header's query pill already used, so the site now has one
  * primary-action look rather than two that disagreed with each other.
  */
 const TONE: Record<Tone, string> = {
@@ -107,7 +107,7 @@ export function InlineAlert({
  * An empty state.
  *
  * Always carries an action. An empty page with no route out is where a customer leaves, and
- * "your cart is empty" without a link to the catalogue is a dead end wearing a friendly
+ * "your query is empty" without a link to the catalogue is a dead end wearing a friendly
  * tone.
  */
 export function EmptyState({

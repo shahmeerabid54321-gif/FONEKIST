@@ -16,7 +16,7 @@ type Level = "info" | "warn" | "error";
 interface LogContext {
   operation: string;
   requestId?: string;
-  cartId?: string;
+  basketId?: string;
   orderId?: string;
   [key: string]: unknown;
 }

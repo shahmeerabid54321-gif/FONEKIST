@@ -9,7 +9,7 @@ import { medusaFetch } from "./medusa";
  * reaches a browser and the engine can be replaced (ADR-004) without touching a page.
  *
  * Search is non-authoritative (ADR-014). Everything here is display data; the PDP and the
- * cart revalidate price and stock against commerce before anything is charged.
+ * application revalidate price and stock against commerce before anything is agreed.
  */
 
 export interface SearchParams {

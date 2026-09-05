@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { AppError, IDEMPOTENCY_KEY_HEADER } from "@/lib/pk";
-import { getOrCreateCart, addLineItem, getCart } from "@/lib/cart";
+import { getOrCreateBasket, addLineItem, getBasket } from "@/lib/reservation";
 import { medusaFetch } from "@/lib/medusa";
 import { log } from "@/lib/log";
 
@@ -69,26 +69,27 @@ export async function submitApplicationAction(
 
   try {
     /*
-     * The cart is built here rather than assumed.
+     * The reservation basket is built here rather than assumed.
      *
      * An installment agreement covers one handset (INST-005), and commerce refuses anything
-     * else, so a customer arriving with a laptop bag of items in their cart would be
-     * rejected at the last step for something they could not see. Starting a clean cart with
-     * exactly this variant means the shape is right by construction.
+     * else. This is the only place in the storefront that touches a Medusa cart: the
+     * customer's shortlist is the query, which holds identifiers and no basket at all, so
+     * the basket is assembled at the last moment with exactly the variant being applied for
+     * and its shape is right by construction.
      */
-    const existing = await getCart();
+    const existing = await getBasket();
     const alreadyCorrect =
       existing?.items.length === 1 &&
       existing.items[0]?.variant_id === variantId &&
       existing.items[0]?.quantity === 1;
 
-    const cart = alreadyCorrect ? existing : await getOrCreateCart();
+    const basket = alreadyCorrect ? existing : await getOrCreateBasket();
     if (!alreadyCorrect) {
       await addLineItem(variantId, 1);
     }
 
     const payload = {
-      cart_id: cart.id,
+      cart_id: basket.id,
       plan_id: planId,
       applicant: {
         full_name: value("applicant_name"),

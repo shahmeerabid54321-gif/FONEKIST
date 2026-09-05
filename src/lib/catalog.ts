@@ -14,7 +14,7 @@ export type StockLevel = "in_stock" | "low_stock" | "out_of_stock" | "preorder";
  *
  * ADR-014: search and listing data may be briefly stale, but price, inventory and payment
  * are revalidated in commerce. Listing reads are therefore cached; the PDP's purchase panel
- * and anything in the cart path are not.
+ * and anything in the application path are not.
  *
  * Nothing here filters for phones. It does not have to: every request carries the FONEKIST
  * publishable key, and the FONEKIST sales channel contains only phones (ADR-022). A
@@ -315,7 +315,7 @@ export async function getCategoryFacets(
 /**
  * Attribute values for a set of products, used to apply spec filters.
  *
- * ADR-014 permits this to lag briefly; it is discovery data, and the PDP and checkout
+ * ADR-014 permits this to lag briefly; it is discovery data, and the PDP and application
  * revalidate anything that affects the purchase.
  */
 export async function getProductAttributeMap(

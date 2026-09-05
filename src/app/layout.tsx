@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 export const metadata: Metadata = {
   metadataBase: new URL(publicEnv.NEXT_PUBLIC_SITE_URL),
   title: {
-    default: "FONEKIST, phones in Pakistan on cash or installments",
+    default: "FONEKIST, phones in Pakistan on monthly installments",
     template: "%s | FONEKIST",
   },
   description:
-    "Buy phones in Pakistan with PTA status, warranty and delivery stated on every listing. Pay in full or on a monthly plan with the total cost shown before you apply.",
+    "Buy phones in Pakistan on a monthly plan, with PTA status, warranty and delivery stated on every listing and the total cost shown before you apply.",
   applicationName: "FONEKIST",
   openGraph: { type: "website", locale: "en_PK", siteName: "FONEKIST" },
   // The card is `opengraph-image.png`, picked up by file convention. Naming the card type

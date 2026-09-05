@@ -9,7 +9,7 @@ Workstream 0 of the plan: the app scaffold, the shared-contract vendoring mechan
 design tokens, the catalog read layer, and a home page that renders the live catalog. The
 phone-only boundary is enforced and tested end to end.
 
-Installments, comparison, brand pages, PDP, cart and checkout are not built yet.
+The storefront sells on installments only. There is no cart and no checkout: nothing is bought on the site.
 
 ## Running it
 
@@ -95,13 +95,13 @@ pnpm sync:contracts   # re-vendor from the monorepo
 | `/` | Brands, newest stock, the installment explainer, the phone finder, budget collections |
 | `/phones` | The catalogue, with brand, monthly-payment, stock and spec filters in the URL |
 | `/brands`, `/brands/[handle]` | Brand directory and brand pages. Sub-brand URLs redirect to the manufacturer |
-| `/p/[handle]` | Product page: gallery, variants, cash or installments, PTA status, specs |
+| `/p/[handle]` | Product page: gallery, variants, the plans and their full disclosure, PTA status, specs |
 | `/compare?ids=a,b,c` | Up to three phones side by side, live prices, differences-only toggle |
 | `/installments` | How the offer works, and what it costs |
 | `/installments/apply` | The credit application |
 | `/installments/status` | Check an application with its reference and phone number |
 | `/search` | Search with typo tolerance and type-ahead |
-| `/cart`, `/checkout` | Cart and guest checkout with COD confirmation |
+| `/query` | The shortlist: handsets and the plan chosen for each, with the total for every one |
 | `/order/[id]`, `/track` | Order detail, tracking timeline and return requests |
 | `/policies/[slug]` | Installments, returns, warranty, PTA status, delivery |
 
@@ -110,8 +110,11 @@ pnpm sync:contracts   # re-vendor from the monorepo
 Both default off. Only the exact string `"true"` enables one.
 
 - `NEXT_PUBLIC_FEATURE_COMPARISON` — enable once the comparison e2e suite passes.
-- `NEXT_PUBLIC_FEATURE_INSTALLMENTS` — enable only after the security tests, the admin
-  review acceptance pass **and** the legal review in ADR-025 all clear.
+- `NEXT_PUBLIC_FEATURE_INSTALLMENTS` — gates CNIC intake, not the shop. With it off the
+  plans, the disclosure and the query all still work and `/installments/apply` and
+  `/installments/status` are not found; the plan panel offers a WhatsApp handoff instead.
+  Enable only after the security tests, the admin review acceptance pass **and** the legal
+  review in ADR-025 all clear.
 
 ## Verifying
 

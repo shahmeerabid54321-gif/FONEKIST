@@ -4,7 +4,7 @@ import { OrderLookupForm } from "@/components/order-lookup-form";
 
 export const metadata: Metadata = {
   title: "Track your order",
-  description: "Look up an order with its reference and the phone number used at checkout.",
+  description: "Look up an order with its reference and the phone number on your application.",
   robots: { index: true, follow: true },
 };
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
  * Order tracking entry point. Source of truth: CUST-018 and ADR-008.
  *
  * Guest customers must be able to track without an account, so lookup takes the public
- * order reference plus a second factor — the phone number used at checkout. The API never
+ * order reference plus a second factor — the phone number on your application. The API never
  * exposes sequential ids and is rate limited (API contract section 4, SEC-004).
  */
 export default function TrackPage() {

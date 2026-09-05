@@ -62,3 +62,39 @@ export function applicationChatUrl(reference: string, plan: PlanView): string | 
   if (!number) return null;
   return `https://wa.me/${number}?text=${encodeURIComponent(applicationMessage(reference, plan))}`;
 }
+
+/**
+ * What a customer sends when applications are not open yet.
+ *
+ * `NEXT_PUBLIC_FEATURE_INSTALLMENTS` gates the intake form, not the shop: with it off the
+ * plans, the disclosure and the query all still work, and the only thing missing is the
+ * place to hand over a CNIC. That is the right thing to withhold until the legal review in
+ * ADR-025 clears, but it would leave a customer who has chosen a plan with nowhere to go,
+ * so the plan itself goes to us on WhatsApp and a person picks it up from there.
+ *
+ * Bound by the same two rules as `applicationMessage`, for the same reasons: no CNIC in the
+ * message (ADR-024), and the monthly figure never travels without its total (INST-003). No
+ * identity data is in scope here at all, because nothing has been collected yet.
+ */
+export function enquiryMessage(productTitle: string, plan: PlanView): string {
+  return [
+    "FONEKIST installment enquiry",
+    "",
+    `Phone: ${productTitle}`,
+    `Plan: ${plan.label}`,
+    `Cash price: ${formatPkr(plan.cash_price_pkr)}`,
+    `Advance: ${formatPkr(plan.advance_pkr)}`,
+    `Monthly: ${formatPkr(plan.monthly_pkr)} x ${plan.tenure_months} = ${formatPkr(plan.monthly_total_pkr)}`,
+    `Total payable: ${formatPkr(plan.total_payable_pkr)}`,
+    `That is ${formatPkr(plan.difference_pkr)} more than the cash price (${plan.difference_percent}%).`,
+    "",
+    "I would like to apply for this plan.",
+  ].join("\n");
+}
+
+/** The click-to-chat URL for an enquiry, or null when no number is configured. */
+export function enquiryChatUrl(productTitle: string, plan: PlanView): string | null {
+  const number = whatsappNumber();
+  if (!number) return null;
+  return `https://wa.me/${number}?text=${encodeURIComponent(enquiryMessage(productTitle, plan))}`;
+}

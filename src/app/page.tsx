@@ -121,7 +121,7 @@ export default async function HomePage() {
     });
   }
 
-  if (features.installments && cheapestMonthly != null) {
+  if (cheapestMonthly != null) {
     slides.push({
       eyebrow: "Installments",
       headline: "Pay monthly, and see the total first.",
@@ -184,74 +184,72 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {features.installments && (
-        <section
-          aria-labelledby="installments-heading"
-          className="on-inverse relative overflow-hidden"
-        >
-          {/* The mark as texture, the same move the footer makes, so the two dark bands on
-              the page belong to each other. */}
-          <FonekistMark className="pointer-events-none absolute -left-24 -top-28 hidden h-[28rem] w-[28rem] text-[var(--on-inverse)] opacity-[0.04] lg:block" />
-          <div className="relative mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
-            <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-              <div>
-                <Eyebrow className="text-[var(--on-inverse-soft)]">Installments</Eyebrow>
-                <h2
-                  id="installments-heading"
-                  className="mt-4 text-3xl font-semibold tracking-tight text-[var(--on-inverse)] sm:text-4xl"
+      <section
+        aria-labelledby="installments-heading"
+        className="on-inverse relative overflow-hidden"
+      >
+        {/* The mark as texture, the same move the footer makes, so the two dark bands on
+            the page belong to each other. */}
+        <FonekistMark className="pointer-events-none absolute -left-24 -top-28 hidden h-[28rem] w-[28rem] text-[var(--on-inverse)] opacity-[0.04] lg:block" />
+        <div className="relative mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+            <div>
+              <Eyebrow className="text-[var(--on-inverse-soft)]">Installments</Eyebrow>
+              <h2
+                id="installments-heading"
+                className="mt-4 text-3xl font-semibold tracking-tight text-[var(--on-inverse)] sm:text-4xl"
+              >
+                The total is on the same screen as the monthly figure.
+              </h2>
+              {cheapestMonthly != null && (
+                <p className="mt-5 text-lg text-[var(--on-inverse-soft)]">
+                  Plans start at{" "}
+                  <strong className="font-semibold text-[var(--on-inverse)]">
+                    {formatPkr(cheapestMonthly)} a month
+                  </strong>
+                  .
+                </p>
+              )}
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href={dynamicRoute("/phones?installments=1")}
+                  className="group inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-chip)] bg-[var(--brand-paper)] px-7 text-sm font-semibold text-[var(--brand-ink)] transition-transform duration-300 [transition-timing-function:var(--ease-brand)] hover:scale-[1.02]"
                 >
-                  The total is on the same screen as the monthly figure.
-                </h2>
-                {cheapestMonthly != null && (
-                  <p className="mt-5 text-lg text-[var(--on-inverse-soft)]">
-                    Plans start at{" "}
-                    <strong className="font-semibold text-[var(--on-inverse)]">
-                      {formatPkr(cheapestMonthly)} a month
-                    </strong>
-                    .
-                  </p>
-                )}
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <Link
-                    href={dynamicRoute("/phones?installments=1")}
-                    className="group inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-chip)] bg-[var(--brand-paper)] px-7 text-sm font-semibold text-[var(--brand-ink)] transition-transform duration-300 [transition-timing-function:var(--ease-brand)] hover:scale-[1.02]"
-                  >
-                    Phones on installments
-                    <IconChevronRight className="transition-transform duration-300 [transition-timing-function:var(--ease-brand)] group-hover:translate-x-0.5" />
-                  </Link>
-                  <Link
-                    href="/policies/installments"
-                    className="inline-flex min-h-[48px] items-center rounded-[var(--radius-chip)] border border-[var(--line-strong)] px-7 text-sm font-medium text-[var(--text)] transition-colors hover:border-[var(--on-inverse)]"
-                  >
-                    Read the terms
-                  </Link>
-                </div>
+                  Phones on installments
+                  <IconChevronRight className="transition-transform duration-300 [transition-timing-function:var(--ease-brand)] group-hover:translate-x-0.5" />
+                </Link>
+                <Link
+                  href="/policies/installments"
+                  className="inline-flex min-h-[48px] items-center rounded-[var(--radius-chip)] border border-[var(--line-strong)] px-7 text-sm font-medium text-[var(--text)] transition-colors hover:border-[var(--on-inverse)]"
+                >
+                  Read the terms
+                </Link>
               </div>
-
-              {/*
-                The four figures, shown rather than described. This is the one promise the
-                storefront is built around (INST-003, ADR-025), so it is stated as a list a
-                reader can check rather than as a paragraph claiming we are transparent.
-              */}
-              <ul className="grid gap-px overflow-hidden rounded-[var(--radius-card)] bg-[var(--line-strong)] sm:grid-cols-2">
-                {[
-                  ["Cash price", "What the handset costs today"],
-                  ["Advance", "What you pay to take it home"],
-                  ["Monthly x tenure", "The arithmetic, printed out"],
-                  ["Total payable", "And how much more that is than cash"],
-                ].map(([term, detail]) => (
-                  <li key={term} className="bg-[var(--surface-inverse)] p-6">
-                    <p className="text-sm font-semibold text-[var(--on-inverse)]">{term}</p>
-                    <p className="mt-1 text-[13px] leading-relaxed text-[var(--on-inverse-soft)]">{detail}</p>
-                  </li>
-                ))}
-              </ul>
             </div>
-          </div>
-        </section>
-      )}
 
-      {byMonthly && byMonthly.hits.length > 0 && features.installments && (
+            {/*
+              The four figures, shown rather than described. This is the one promise the
+              storefront is built around (INST-003, ADR-025), so it is stated as a list a
+              reader can check rather than as a paragraph claiming we are transparent.
+            */}
+            <ul className="grid gap-px overflow-hidden rounded-[var(--radius-card)] bg-[var(--line-strong)] sm:grid-cols-2">
+              {[
+                ["Cash price", "What the handset costs today"],
+                ["Advance", "What you pay to take it home"],
+                ["Monthly x tenure", "The arithmetic, printed out"],
+                ["Total payable", "And how much more that is than cash"],
+              ].map(([term, detail]) => (
+                <li key={term} className="bg-[var(--surface-inverse)] p-6">
+                  <p className="text-sm font-semibold text-[var(--on-inverse)]">{term}</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-[var(--on-inverse-soft)]">{detail}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {byMonthly && byMonthly.hits.length > 0 && (
         <Section labelledBy="monthly-heading">
           <SectionHead id="monthly-heading" title="What fits your monthly budget" />
           <div className="mt-6">

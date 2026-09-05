@@ -178,11 +178,14 @@ export function ProductCard({
 
             It sat above the title link's full-card overlay as plain text, so the one thing
             on the card that says this phone can be bought monthly went nowhere in
-            particular. `relative z-[1]` lifts it back out of that overlay; the rest of the
-            card still opens the cash view.
+            particular. `relative z-[1]` lifts it back out of that overlay.
+
+            It used to carry `?pay=installments`, which opened the product page on the
+            plans rather than on the cash price. There is no longer a cash view to open
+            instead, so the parameter did nothing but sit in the URL and get shared.
           */
           <Link
-            href={dynamicRoute(`/p/${product.handle}?pay=installments`)}
+            href={dynamicRoute(`/p/${product.handle}`)}
             className="relative z-[1] mt-1.5 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-emerald-strong)] underline-offset-4 hover:underline focus-visible:underline"
           >
             <IconCalendar className="h-4 w-4" />
