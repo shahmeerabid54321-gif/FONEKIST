@@ -13,6 +13,25 @@ loadEnv(process.env.NODE_ENV || "development", process.cwd());
 const REDIS_URL = process.env.REDIS_URL;
 const usingRedis = Boolean(REDIS_URL);
 
+/**
+ * Medusa's default Knex pool is too small for its parallel module loaders on the
+ * smallest Render instances.  When the database is briefly slow, all ten slots
+ * can be occupied and the next loader fails the entire process with
+ * "Knex: Timeout acquiring a connection".  Render Postgres allows 100 direct
+ * connections even on the free compute plan, so a bounded pool of twenty leaves
+ * ample headroom while allowing a cold process to finish booting.
+ *
+ * Keep these overridable for a larger deployment without baking infrastructure
+ * sizing into another code change.  A zero minimum is important on Render: idle
+ * processes should release their connections instead of reserving them forever.
+ */
+const databasePool = {
+  min: Number(process.env.DATABASE_POOL_MIN ?? 0),
+  max: Number(process.env.DATABASE_POOL_MAX ?? 20),
+  acquireTimeoutMillis: Number(process.env.DATABASE_ACQUIRE_TIMEOUT_MS ?? 120_000),
+  idleTimeoutMillis: Number(process.env.DATABASE_IDLE_TIMEOUT_MS ?? 30_000),
+};
+
 const infrastructureModules = usingRedis
   ? [
       {
@@ -37,6 +56,9 @@ const infrastructureModules = usingRedis
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    databaseDriverOptions: {
+      pool: databasePool,
+    },
     // TRD section 10: strict CORS allowlist, no wildcards.
     http: {
       storeCors: process.env.STORE_CORS!,
