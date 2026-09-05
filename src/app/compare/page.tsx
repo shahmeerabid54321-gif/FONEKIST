@@ -7,6 +7,8 @@ import { search } from "@/lib/search";
 import { CompareTable } from "@/components/compare-table";
 import { hitToCard, ProductGrid } from "@/components/product-grid";
 import { degradeGracefully } from "@/lib/log";
+import { dynamicRoute } from "@/lib/routes";
+import { CatalogUnavailable } from "@/components/catalog-unavailable";
 
 export const metadata: Metadata = {
   title: "Compare phones",
@@ -62,7 +64,28 @@ export default async function ComparePage({
     );
   }
 
-  const comparison = await buildComparison(handles);
+  /*
+   * Every figure in this table is read live rather than from the search index, so this page
+   * has no cache to fall back on when commerce is unreachable, exactly like the product
+   * page. It says so instead of throwing: a comparison that cannot be built is not a
+   * comparison of nothing.
+   */
+  const comparison = await degradeGracefully("compare.table", null, () =>
+    buildComparison(handles),
+  );
+
+  if (!comparison) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)]">
+          Compare phones
+        </h1>
+        <div className="mt-8">
+          <CatalogUnavailable retryHref={dynamicRoute(`/compare?ids=${handles.join(",")}`)} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">

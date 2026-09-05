@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listBrands } from "@/lib/brands";
+import { degradeGracefully } from "@/lib/log";
+import { CatalogUnavailable } from "@/components/catalog-unavailable";
 
 export const metadata: Metadata = {
   title: "Brands",
@@ -17,7 +19,23 @@ export const revalidate = 300;
  * two more near-empty pages beside it.
  */
 export default async function BrandsPage() {
-  const brands = await listBrands();
+  /*
+   * `null` is commerce not answering; `[]` is commerce answering that there are none. The
+   * page says something different for each, because "No brands are listed yet" is a claim
+   * about the shop and printing it over a failed request tells somebody we sell nothing.
+   */
+  const brands = await degradeGracefully("brands.list", null, () => listBrands());
+
+  if (!brands) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text)]">Brands</h1>
+        <div className="mt-8">
+          <CatalogUnavailable retryHref="/brands" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">

@@ -7,6 +7,7 @@ import {
   defaultVariant,
   getProductByHandle,
   getProductExtras,
+  type MedusaProduct,
   modelOf,
   priceFor,
   stockLevelFor,
@@ -26,6 +27,7 @@ import { ProductGallery } from "@/components/product-gallery";
 import { SpecTable } from "@/components/spec-table";
 import { VariantSelector } from "@/components/variant-selector";
 import { CompareToggle } from "@/components/compare-tray";
+import { CatalogUnavailable } from "@/components/catalog-unavailable";
 
 export async function generateMetadata({
   params,
@@ -33,7 +35,9 @@ export async function generateMetadata({
   params: Promise<{ handle: string }>;
 }): Promise<Metadata> {
   const { handle } = await params;
-  const product = await getProductByHandle(handle);
+  const product = await degradeGracefully("pdp.metadata", null, () =>
+    getProductByHandle(handle),
+  );
   if (!product) return { title: "Phone not found" };
   return {
     title: product.title,
@@ -67,19 +71,54 @@ export default async function ProductPage({
   const { handle } = await params;
   const query = await searchParams;
 
-  const product = await getProductByHandle(handle);
-  if (!product) notFound();
+  /*
+   * Three outcomes, and the difference between two of them matters.
+   *
+   * `null` is commerce saying there is no such handset, and it 404s. `undefined` is commerce
+   * not answering, and it must never 404: retiring a URL somebody followed, because a
+   * request failed, throws away the page and the link to it. That case renders the
+   * unavailable state below.
+   *
+   * This page used to await the read bare, so any hiccup in commerce handed the whole thing
+   * to the route error boundary: "We could not load this page" on every phone on the site,
+   * while the catalogue pages either side of it degraded quietly. A product page is where
+   * somebody arrives from a search result, and it was the one page with no cache to fall
+   * back on, because it reads `no-store` to state a live price. That combination made it the
+   * first thing to break and the loudest way to break.
+   */
+  const product = await degradeGracefully<MedusaProduct | null | undefined>(
+    "pdp.product",
+    undefined,
+    () => getProductByHandle(handle),
+  );
+  if (product === null) notFound();
 
   const requested = typeof query.variant === "string" ? query.variant : null;
-  const variant =
-    product.variants.find((candidate) => candidate.id === requested) ?? defaultVariant(product);
+  const variant = product
+    ? (product.variants.find((candidate) => candidate.id === requested) ??
+      defaultVariant(product))
+    : null;
 
-  if (!variant) notFound();
+  if (product && !variant) notFound();
+
+  if (!product || !variant) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <CatalogUnavailable retryHref={dynamicRoute(`/p/${handle}`)} />
+      </div>
+    );
+  }
 
   const brandForSearch = brandHandle(brandOf(product));
 
   const [extras, plans, related] = await Promise.all([
-    getProductExtras(product.id, variant.id),
+    /*
+     * Degraded, but the page does not continue without it. The specification table carries
+     * the PTA row, and a handset sold unregistered is the most expensive surprise in this
+     * market: rendering the page with the table quietly missing would be the one failure
+     * mode worse than saying we could not load it.
+     */
+    degradeGracefully("pdp.extras", null, () => getProductExtras(product.id, variant.id)),
     degradeGracefully("pdp.plans", [], () => listPlans(variant.id)),
     /*
      * Same brand, in stock. A page that ends at the specification table gives a reader who
@@ -95,6 +134,14 @@ export default async function ProductPage({
         )
       : Promise.resolve(null),
   ]);
+
+  if (!extras) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8">
+        <CatalogUnavailable retryHref={dynamicRoute(`/p/${handle}`)} />
+      </div>
+    );
+  }
 
   const price = priceFor(variant);
   const stock = stockLevelFor(variant);
