@@ -115,9 +115,12 @@ Two consequences are worth knowing before changing anything here:
 - **Photographs are resized at build time, never per request** (`scripts/derive-media.mjs`,
   `src/components/photo.tsx`). Four widths in AVIF and WebP, served through `<picture>`, so
   the server does no image work and `/_next/image` is on no path. A catalogue page on a phone
-  went from 3,199 KB of photography to 462 KB. Run `pnpm derive:media` after changing
-  anything in `public/media`; `pnpm build` and `pnpm dev` both run it, and it skips files
-  whose derivatives are already current. `sharp` is a runtime dependency rather than a dev
+  went from 3,199 KB of photography to 462 KB. The ladder is committed beside the
+  photographs, because encoding it takes about a minute on eight cores and the deploy target
+  has a fraction of one; `pnpm build` and `pnpm dev` both run `derive:media`, which on a
+  clean tree is a 20ms no-op. Freshness is a content hash rather than a timestamp, so a fresh
+  clone does not re-encode everything at random. Change a photograph and it re-encodes that
+  photograph's eight files and nothing else; commit those alongside it. `sharp` is a runtime dependency rather than a dev
   one only so that a production install still has it at build time; nothing serves an image
   through it, and Next traces it into `.next/standalone` either way.
 

@@ -30,13 +30,24 @@
  * image is emitted twice and the browser picks. The original JPG stays as the `<img>` src,
  * which is what a browser with neither format gets.
  *
- * **Why it is a hard build step rather than a best-effort one.** `mediaSrcSet` derives the
+ * **Why it is a hard build step rather than a best-effort one.** `mediaSources` derives the
  * derivative paths by rule, not from a manifest, so that no lookup table has to be shipped
  * to the browser. The rule assumes the files exist. If this script does not run, those URLs
  * 404 and the catalogue renders blank tiles, so a missing `sharp` has to fail the build
  * loudly here rather than quietly at a customer.
+ *
+ * **Why the ladder is committed and this is usually a no-op.** Encoding all of it takes about
+ * seventy seconds on eight cores, and the deploy target is a free instance with a fraction of
+ * one. Paying that on every deploy is the difference between a build that finishes and a
+ * build that times out, so the output is committed beside the photographs it comes from and
+ * this script's job on a deploy is to confirm it is current.
+ *
+ * That confirmation is a content hash, not a timestamp. A fresh `git clone` writes every file
+ * at the same moment in arbitrary order, so an mtime comparison would re-encode the whole
+ * ladder on a CI machine at random, which is exactly where it must not happen.
  */
-import { readdir, mkdir, stat, writeFile } from "node:fs/promises";
+import { readdir, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
 import process from "node:process";
@@ -94,20 +105,22 @@ async function findSources(dir) {
   return found;
 }
 
-/** True when the derivative is already there and no older than its source. */
-async function isFresh(target, sourceMtimeMs) {
+/** True when the file is there at all. Whether it is *current* is the hash's job. */
+async function exists(target) {
   try {
-    const info = await stat(target);
-    return info.mtimeMs >= sourceMtimeMs;
+    await stat(target);
+    return true;
   } catch {
     return false;
   }
 }
 
-async function derive(source) {
+async function derive(source, recordedHash) {
   const relative = path.relative(MEDIA_DIR, source);
   const stem = relative.replace(/\.jpe?g$/i, "");
-  const sourceMtimeMs = (await stat(source)).mtimeMs;
+  const bytesIn = await readFile(source);
+  const hash = createHash("sha256").update(bytesIn).digest("hex").slice(0, 16);
+  const unchanged = recordedHash === hash;
 
   let written = 0;
   let bytes = 0;
@@ -119,7 +132,7 @@ async function derive(source) {
     ]) {
       const target = path.join(DERIVED_DIR, `${stem}-${width}.${extension}`);
 
-      if (await isFresh(target, sourceMtimeMs)) {
+      if (unchanged && (await exists(target))) {
         bytes += (await stat(target)).size;
         continue;
       }
@@ -133,7 +146,7 @@ async function derive(source) {
     }
   }
 
-  return { written, bytes, sourceBytes: (await stat(source)).size };
+  return { written, bytes, sourceBytes: bytesIn.length, relative, hash };
 }
 
 /** A fixed pool rather than `Promise.all` over ninety files: libvips is already threaded,
@@ -154,13 +167,20 @@ async function run(tasks, concurrency) {
 const started = Date.now();
 const sources = await findSources(MEDIA_DIR);
 
+const MANIFEST = path.join(DERIVED_DIR, "derived-manifest.json");
+
+/** What the committed ladder was built from. Absent or unreadable means "rebuild it all". */
+const recorded = await readFile(MANIFEST, "utf8")
+  .then((raw) => JSON.parse(raw).hashes ?? {})
+  .catch(() => ({}));
+
 if (sources.length === 0) {
   console.log("derive:media found no photographs under public/media");
   process.exit(0);
 }
 
 const results = await run(
-  sources.map((source) => () => derive(source)),
+  sources.map((source) => () => derive(source, recorded[path.relative(MEDIA_DIR, source)])),
   Math.max(1, os.availableParallelism?.() ?? 4),
 );
 
@@ -169,21 +189,25 @@ const derivedBytes = results.reduce((total, result) => total + result.bytes, 0);
 const sourceBytes = results.reduce((total, result) => total + result.sourceBytes, 0);
 
 /*
- * A record of what the ladder holds, for a person rather than for the code. Nothing reads
- * this at runtime: `mediaSrcSet` works by rule precisely so that no manifest has to reach a
- * browser. It is here so that "are the derivatives current?" is answerable without running
- * sharp.
+ * What the ladder was built from, so the next run can tell current from stale without
+ * decoding anything. Nothing reads this at runtime: `mediaSources` works by rule precisely so
+ * that no manifest has to reach a browser.
+ *
+ * `generatedAt` is deliberately absent. This file is committed, and a timestamp that changes
+ * on every run would put a diff in every commit that touched no photograph.
  */
 await writeFile(
-  path.join(DERIVED_DIR, "derived-manifest.json"),
+  MANIFEST,
   `${JSON.stringify(
     {
-      generatedAt: new Date().toISOString(),
       widths: WIDTHS,
       formats: ["avif", "webp"],
       sources: sources.length,
       sourceBytes,
       derivedBytes,
+      hashes: Object.fromEntries(
+        results.map((result) => [result.relative, result.hash]).sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+      ),
     },
     null,
     2,
