@@ -140,6 +140,19 @@ Changing anything in `src/lib/catalog.ts`, `src/lib/search.ts`, `src/components/
 or `src/app/layout.tsx` can silently cost the whole site its shell. Run
 `PLAYWRIGHT_BASE_URL=http://localhost:3001 pnpm test:e2e` against `pnpm serve` afterwards.
 
+**The build reads the catalogue, so it needs a live backend and a bounded read.** Since the
+storefront started prerendering, `next build` generates fifty-eight pages from live commerce
+data, and every one of those reads happens inside a `use cache` scope. Two consequences, both
+of which have already cost a deploy. First, a scope that *throws* fails the prerender of
+whichever page needed it, however carefully the caller degrades: `degradeGracefully` runs and
+returns its fallback, and the build still fails. So the build cannot survive a backend that is
+down, and `scripts/wait-for-backend.mjs` fails it early with a legible message instead of
+three minutes of degradation warnings. Second, Next aborts a cache fill after **fifty seconds**
+and that ceiling is not configurable, so the whole retry ladder in `lib/medusa.ts` has to fit
+inside it, nesting included (`getProductByHandle` awaits `getRegionId`, and the inner fill's
+time counts against the outer's). The constant there is asserted at import; raising a timeout
+means redoing that arithmetic.
+
 Two behaviours come with Cache Components. React keeps the route you navigated away from
 mounted and hidden (`<Activity>`), so an unscoped test locator can match two routes at once.
 Harmless UI state may survive, but the installment form deliberately clears CNIC, income,
