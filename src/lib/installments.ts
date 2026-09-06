@@ -4,6 +4,7 @@ import {
   type InstallmentState,
 } from "@/lib/pk";
 import { cacheLife, cacheTag } from "next/cache";
+import { capture, unwrap, type Degradable } from "./cached-read";
 import { medusaFetch } from "./medusa";
 
 /**
@@ -21,15 +22,19 @@ export interface PlanView extends InstallmentDisclosure {
   variant_id: string;
 }
 
-async function fetchPlans(variantId: string): Promise<PlanView[]> {
+async function fetchPlans(variantId: string): Promise<Degradable<PlanView[]>> {
   "use cache";
   cacheLife("hours");
   cacheTag(`plans:${variantId}`);
 
-  const data = await medusaFetch<{ data: { plans: PlanView[] } }>(
-    `/store/installment-plans?variant_id=${encodeURIComponent(variantId)}`,
-  );
-  return (data.data.plans ?? []).filter(isArithmeticallySound);
+  return capture(async () => {
+    const data = await medusaFetch<{ data: { plans: PlanView[] } }>(
+      `/store/installment-plans?variant_id=${encodeURIComponent(variantId)}`,
+    );
+    // Only a genuinely empty, arithmetically sound plan list is cached as one. A failure is
+    // stored as a failure, so an outage can never become "this handset has no plans".
+    return (data.data.plans ?? []).filter(isArithmeticallySound);
+  });
 }
 
 /**
@@ -52,7 +57,7 @@ async function fetchPlans(variantId: string): Promise<PlanView[]> {
  */
 export async function listPlans(variantId: string): Promise<PlanView[]> {
   try {
-    return await fetchPlans(variantId);
+    return unwrap(await fetchPlans(variantId));
   } catch {
     // Plans are an additional way to buy, not the only one. If this endpoint is down the
     // PDP still sells the handset for cash rather than erroring the page (REL-001).

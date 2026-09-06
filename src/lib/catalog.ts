@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { AppError, type WarrantyType, type DurationUnit } from "@/lib/pk";
+import { capture, unwrap, type Degradable } from "./cached-read";
 import { medusaFetch } from "./medusa";
 
 /**
@@ -134,27 +135,37 @@ const PRODUCT_FIELDS =
  * are presented, not decided, and the application path re-reads them uncached.
  */
 export async function getProductByHandle(handle: string): Promise<MedusaProduct | null> {
+  return unwrap(await fetchProductByHandle(handle));
+}
+
+async function fetchProductByHandle(
+  handle: string,
+): Promise<Degradable<MedusaProduct | null>> {
   "use cache";
   cacheLife("hours");
   cacheTag(`product:${handle}`);
 
-  // Awaited before the constructor rather than inside it. It reads the same either way, but
-  // as an argument it hid a second, serial round trip in the middle of building a query
-  // string, which is the last place anyone looks for one.
-  const regionId = await getRegionId();
+  return capture(async () => {
+    // Awaited before the constructor rather than inside it. It reads the same either way, but
+    // as an argument it hid a second, serial round trip in the middle of building a query
+    // string, which is the last place anyone looks for one.
+    const regionId = await getRegionId();
 
-  const search = new URLSearchParams({
-    handle,
-    fields: PRODUCT_FIELDS,
-    limit: "1",
-    region_id: regionId,
+    const search = new URLSearchParams({
+      handle,
+      fields: PRODUCT_FIELDS,
+      limit: "1",
+      region_id: regionId,
+    });
+
+    const data = await medusaFetch<{ products: MedusaProduct[] }>(
+      `/store/products?${search.toString()}`,
+    );
+
+    // A genuine absence, cached as such. Only a *failure* takes the degraded path, so an
+    // outage can never be stored as "this phone does not exist".
+    return data.products?.[0] ?? null;
   });
-
-  const data = await medusaFetch<{ products: MedusaProduct[] }>(
-    `/store/products?${search.toString()}`,
-  );
-
-  return data.products?.[0] ?? null;
 }
 
 /**
@@ -230,14 +241,20 @@ export interface MedusaCategory {
  * uncached, it was the first thing every page in the site waited for.
  */
 export async function listCategories(): Promise<MedusaCategory[]> {
+  return unwrap(await fetchCategories());
+}
+
+async function fetchCategories(): Promise<Degradable<MedusaCategory[]>> {
   "use cache";
   cacheLife("hours");
   cacheTag("categories");
 
-  const data = await medusaFetch<{ product_categories: MedusaCategory[] }>(
-    "/store/product-categories?fields=id,name,handle,description,parent_category_id,*category_children&limit=100",
-  );
-  return data.product_categories ?? [];
+  return capture(async () => {
+    const data = await medusaFetch<{ product_categories: MedusaCategory[] }>(
+      "/store/product-categories?fields=id,name,handle,description,parent_category_id,*category_children&limit=100",
+    );
+    return data.product_categories ?? [];
+  });
 }
 
 
@@ -264,21 +281,27 @@ export interface MedusaRegion {
  * merely unseeded does not poison the entry for a month.
  */
 export async function getRegionId(): Promise<string> {
+  return unwrap(await fetchRegionId());
+}
+
+async function fetchRegionId(): Promise<Degradable<string>> {
   "use cache";
   cacheLife("max");
   cacheTag("regions");
 
-  const data = await medusaFetch<{ regions: MedusaRegion[] }>("/store/regions?limit=1");
+  return capture(async () => {
+    const data = await medusaFetch<{ regions: MedusaRegion[] }>("/store/regions?limit=1");
 
-  const region = data.regions?.[0];
-  if (!region) {
-    throw new AppError("INTERNAL_ERROR", {
-      message: "The store is not configured for your region yet.",
-      internal: "No region returned by commerce. Run the seed script.",
-    });
-  }
+    const region = data.regions?.[0];
+    if (!region) {
+      throw new AppError("INTERNAL_ERROR", {
+        message: "The store is not configured for your region yet.",
+        internal: "No region returned by commerce. Run the seed script.",
+      });
+    }
 
-  return region.id;
+    return region.id;
+  });
 }
 
 /* ---------------------------------------------------------------- Specs & warranty */
@@ -313,18 +336,20 @@ export interface ProductExtras {
 async function fetchProductExtras(
   productId: string,
   variantId: string | null,
-): Promise<ProductExtras> {
+): Promise<Degradable<ProductExtras>> {
   "use cache";
   cacheLife("hours");
   cacheTag(`product-extras:${productId}`);
 
-  const search = new URLSearchParams({ product_id: productId });
-  if (variantId) search.set("variant_id", variantId);
+  return capture(async () => {
+    const search = new URLSearchParams({ product_id: productId });
+    if (variantId) search.set("variant_id", variantId);
 
-  const data = await medusaFetch<{ data: ProductExtras }>(
-    `/store/electronics/product-details?${search.toString()}`,
-  );
-  return data.data;
+    const data = await medusaFetch<{ data: ProductExtras }>(
+      `/store/electronics/product-details?${search.toString()}`,
+    );
+    return data.data;
+  });
 }
 
 /**
@@ -340,7 +365,7 @@ export async function getProductExtras(
   variantId?: string | null,
 ): Promise<ProductExtras> {
   try {
-    return await fetchProductExtras(productId, variantId ?? null);
+    return unwrap(await fetchProductExtras(productId, variantId ?? null));
   } catch {
     // Specs are enrichment, not purchase truth. If the endpoint fails the PDP still renders
     // price, stock and delivery rather than erroring the whole page (REL-001).

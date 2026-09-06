@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { capture, unwrap, type Degradable } from "./cached-read";
 import type { AutocompleteSuggestion, SearchResponse } from "@/lib/pk";
 import { medusaFetch } from "./medusa";
 
@@ -39,6 +40,10 @@ export interface SearchParams {
  * and the brand pages be served from a prerendered shell rather than a live query.
  */
 export async function search(params: SearchParams): Promise<SearchResponse> {
+  return unwrap(await fetchSearch(params));
+}
+
+async function fetchSearch(params: SearchParams): Promise<Degradable<SearchResponse>> {
   "use cache";
   cacheLife("hours");
   cacheTag("search");
@@ -62,11 +67,15 @@ export async function search(params: SearchParams): Promise<SearchResponse> {
     if (values.length > 0) query.set(`attr.${key}`, values.join(","));
   }
 
-  const response = await medusaFetch<{ data: SearchResponse }>(
-    `/store/search?${query.toString()}`,
-  );
+  return capture(async () => {
+    const response = await medusaFetch<{ data: SearchResponse }>(
+      `/store/search?${query.toString()}`,
+    );
 
-  return response.data;
+    // An empty result set is only ever a real empty result set. A failed search throws, so
+    // "no phones match" is never something an outage can put on the page.
+    return response.data;
+  });
 }
 
 /**

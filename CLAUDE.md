@@ -11,6 +11,9 @@ strict, Tailwind v4) that consumes the Medusa commerce backend in the sibling
 `docs/ADR-003-brand-presence.md` supersedes parts of both: it takes the accent back off the
 structural surfaces, gives the brand red an ornamental role, and adds the icon set and the
 progress motif. Read ADR-003 before touching colour.
+`docs/ADR-004-degrading-cached-reads.md` is why a cached read stores its failure rather than
+throwing it, and is required reading before touching anything in `lib/catalog.ts`,
+`lib/search.ts` or `lib/installments.ts`.
 The plan this is being built from lives at
 `~/.claude/plans/audit-this-plan-and-ancient-beaver.md`.
 
@@ -94,9 +97,18 @@ The plan this is being built from lives at
   `cacheLife("hours")` in `lib/catalog.ts` and `lib/search.ts` is what makes the site
   serveable. Presenting an hour-old price is not deciding one, and the application path
   re-reads price and plans uncached at submission. But "Only N left" an hour after N was true
-  is fabricated scarcity, so stock is read on the `seconds` profile in its own boundary. A
-  fallback must never be computed *inside* a `use cache` scope, or one timeout gets cached as
-  "this phone has no plans" for an hour.
+  is fabricated scarcity, so stock is read on the `seconds` profile in its own boundary.
+- **A cached read stores its failure, never a fallback (ADR-004).** The rule used to be "no
+  fallback *inside* a `use cache` scope", which was right about the harm and wrong about the
+  mechanism: a fill that throws fails the prerender of the whole page, however well the caller
+  degrades, and that took two deploys down. So `lib/cached-read.ts` catches inside the scope
+  and stores the *failure* — `{ ok: false }` means "the read failed", never "there are none" —
+  then `unwrap` rethrows the original error outside the scope, where `degradeGracefully` has
+  always handled it. Nothing false is ever cached and every call site behaves as before. What
+  remains forbidden is caching a **fallback**: an empty plan list, an empty result page or a
+  404 for a product that exists are the site asserting something untrue. A failed entry drops
+  to `minutes`; `seconds` is not available, because a profile that short reads as dynamic
+  during a blocking prerender and fails the static routes.
 - **The query is two cookies.** `fk_query` holds the shortlist and stays `httpOnly`, because
   it is the capability. `fk_query_n` holds only the count and is readable, because the header
   badge needs it without making every page dynamic. `writeQuery` is the only place either is
@@ -140,18 +152,21 @@ Changing anything in `src/lib/catalog.ts`, `src/lib/search.ts`, `src/components/
 or `src/app/layout.tsx` can silently cost the whole site its shell. Run
 `PLAYWRIGHT_BASE_URL=http://localhost:3001 pnpm test:e2e` against `pnpm serve` afterwards.
 
-**The build reads the catalogue, so it needs a live backend and a bounded read.** Since the
+**The build reads the catalogue, and a cache fill is the unit that must not fail.** Since the
 storefront started prerendering, `next build` generates fifty-eight pages from live commerce
 data, and every one of those reads happens inside a `use cache` scope. Two consequences, both
-of which have already cost a deploy. First, a scope that *throws* fails the prerender of
-whichever page needed it, however carefully the caller degrades: `degradeGracefully` runs and
-returns its fallback, and the build still fails. So the build cannot survive a backend that is
-down, and `scripts/wait-for-backend.mjs` fails it early with a legible message instead of
-three minutes of degradation warnings. Second, Next aborts a cache fill after **fifty seconds**
-and that ceiling is not configurable, so the whole retry ladder in `lib/medusa.ts` has to fit
-inside it, nesting included (`getProductByHandle` awaits `getRegionId`, and the inner fill's
-time counts against the outer's). The constant there is asserted at import; raising a timeout
-means redoing that arithmetic.
+of which cost a deploy before they were understood. First, a scope that *throws* fails the
+prerender of whichever page needed it, however carefully the caller degrades: every
+`degradeGracefully` call runs, logs, returns its fallback, and the build dies anyway.
+`<Suspense>` does not help, because it catches suspension and not errors. That is what
+ADR-004 and `lib/cached-read.ts` exist for, and the build now completes with every catalogue
+read failing. Second, Next aborts a cache fill after **fifty seconds** and that ceiling is not
+configurable, so the whole retry ladder in `lib/medusa.ts` has to fit inside it, nesting
+included (`getProductByHandle` awaits `getRegionId`, and the inner fill's time counts against
+the outer's). The constant there is asserted at import; raising a timeout means redoing that
+arithmetic. `scripts/wait-for-backend.mjs` is no longer what keeps the build alive, but it
+still wakes a sleeping instance once rather than fifty-eight times and turns "the backend is
+unreachable" into a line that says so.
 
 Two behaviours come with Cache Components. React keeps the route you navigated away from
 mounted and hidden (`<Activity>`), so an unscoped test locator can match two routes at once.
