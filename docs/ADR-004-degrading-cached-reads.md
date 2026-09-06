@@ -18,12 +18,16 @@ arguments such as params, searchParams, cookies() or dynamic data were used insi
 The message is misleading. Nothing was reading request data inside a cache scope. Two
 separate things were wrong, and only the first was obvious.
 
-**The timeout.** Next fills a `use cache` entry under a hard fifty second budget that is not
-configurable. The retry ladder in `lib/medusa.ts` took fifty-three: eight seconds for the
-first attempt plus a forty-five second cold-start wake. The two numbers were chosen in
-commits that never met. The wake landed while nothing was prerendered, so no read ran inside
-a cache scope and the total did not matter; prerendering landed assuming a read either
-succeeds or degrades. That is fixed by arithmetic and is not what this record is about.
+**The timeout.** The retry ladder in `lib/medusa.ts` was longer than the budget of the scope
+it ran inside: eight seconds for the first attempt plus a forty-five second cold-start wake.
+The two numbers were chosen in commits that never met. The wake landed while nothing was
+prerendered, so no read ran inside a cache scope and the total did not matter; prerendering
+landed assuming a read either succeeds or degrades. That is fixed by arithmetic and is not
+what this record is about.
+
+This section originally said the budget was "a hard fifty seconds that is not configurable".
+Both halves were wrong, and the correction is recorded in the amendment at the end, because
+believing it cost a third deploy.
 
 **The real one.** A `use cache` fill that *throws* fails the prerender of whichever page
 needed it. Not the component, the page. It does this however carefully the caller degrades.
@@ -100,3 +104,45 @@ different places.
 `scripts/wait-for-backend.mjs` remains, for a different reason. It is no longer what keeps the
 build alive, but it is still the difference between a legible deploy log and a baffling one,
 and it wakes a sleeping instance once rather than fifty-eight times.
+
+## Amendment, after a third failed deploy
+
+The fix above is sound and is not changed by what follows. It was incomplete, and one
+sentence in it was false.
+
+**The budget is configurable, and this project never had the one the code asserted.**
+`experimental.useCacheTimeout` sets how long a fill may stall. When it is unset, Next derives
+it from `staticPageGenerationTimeout` at ninety per cent. This project raised that setting to
+180 seconds for the backend's sake, which silently made the fill budget 162 seconds. So the
+constant asserting "a hard fifty second ceiling" was guarding a number that had never applied
+here, and a stalled read sat for two minutes and forty-two seconds before failing the build.
+The deploy log proves it: the gap between the last degradation warning and the failure is
+161.9 seconds. `next.config.ts` now pins `useCacheTimeout` explicitly, next to the setting it
+was silently inheriting from.
+
+**A read that never settles cannot be caught.** `capture` catches what the read throws. A read
+that hangs throws nothing, so the fill runs until Next's stall timer fires — and that timer
+does more than abort the fill. It assigns the error to `workStore.invalidDynamicUsageError`,
+which fails the page's prerender whether or not userland caught it. That is why the third
+deploy logged `installments.cheapest failed; rendering without it`, showing
+`degradeGracefully` working exactly as designed, and died anyway. Catching a
+`UseCacheTimeoutError` is not a recovery; it only hides which read stalled.
+
+**So a captured read now has a deadline.** `CACHE_READ_DEADLINE_MS` (45s) races every read
+inside the scope, so a stall becomes a recorded failure rather than a hung fill, whatever
+caused it — an unanswering socket, a starved event loop, or something inside the framework.
+Three numbers now sit in a stated order, each asserted rather than assumed: the medusa ladder
+(41s worst case, nested) finishes inside the deadline (45s), which fires well inside the
+pinned fill timeout (60s), which is inside the page budget (180s). `lib/medusa.ts` throws at
+import if the first of those stops being true.
+
+What was not determined is *why* that particular read stalled past its own 8s and 25s abort
+signals when the event loop was demonstrably healthy — Next's timer fired on schedule. The
+deadline makes the cause moot rather than known, which is the honest description of it.
+
+**And `/health` is not evidence the store works.** The same deploy showed liveness green and
+`/store/product-categories` timing out at 25 seconds: Medusa answers `/health` as soon as the
+HTTP server listens, before the modules have a warm database connection. `wait-for-backend.mjs`
+now warms the store path itself, with the publishable key, which moves that first cold query
+out of a budgeted cache fill and is also the only probe that can see a bad key — `/health`
+does not take one, and Medusa rejects an unrecognised key with 400 rather than 401.

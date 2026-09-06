@@ -1,5 +1,6 @@
 import { AppError, type ErrorCode } from "@/lib/pk";
 import { unstable_rethrow } from "next/navigation";
+import { CACHE_READ_DEADLINE_MS } from "./cached-read";
 import { publicEnv, serverEnv } from "./env";
 
 /**
@@ -51,27 +52,28 @@ const DEFAULT_TIMEOUT_MS = 8_000;
  */
 
 /**
- * The ceiling this ladder has to fit inside, which is not ours and is not configurable.
+ * The budget this ladder has to fit inside, and where that number now comes from.
  *
- * Next fills a `use cache` entry under a hard fifty second budget and throws
- * `UseCacheTimeoutError` when it is exceeded. Every catalogue read runs inside such a scope
- * (`lib/catalog.ts`, `lib/search.ts`), so the retry ladder is not merely slow when it
- * overruns: the fill is aborted and, during a prerender, the build fails outright.
+ * Every catalogue read runs inside a `use cache` scope (`lib/catalog.ts`, `lib/search.ts`),
+ * and a scope that outlives its fill budget does not merely degrade: Next records the stall
+ * on the work store and the page's prerender fails, so during a build it ends the deploy.
  *
- * It did overrun. Eight seconds plus a forty-five second wake is fifty-three, and the two
- * numbers were chosen in different commits that never met: the wake landed while nothing was
- * prerendered, and prerendering landed assuming reads either succeed or degrade. With a
- * sleeping backend the first cache fill of the build spent fifty-three seconds and Next
- * killed it, so a storefront deploy could not survive a backend that was merely asleep. The
- * fallbacks were all working and none of them ever got the chance to run.
+ * This used to name Next's own fill timeout, as a hard fifty seconds that could not be
+ * changed. Both halves were wrong. `experimental.useCacheTimeout` sets it, and when it is not
+ * set Next derives it from `staticPageGenerationTimeout` — ninety per cent of it — so this
+ * project's real ceiling was a hundred and sixty-two seconds, not fifty, and an assertion
+ * against fifty was guarding a number that never applied. `next.config.ts` now pins it.
  *
- * Nesting is what sets the actual budget rather than the ceiling itself. `getProductByHandle`
- * awaits `getRegionId`, one cache scope inside another, and the inner fill's time counts
- * against the outer's. Only one caller ever holds the wake (`claimWake`), so the worst chain
- * is one full ladder plus one fast failure: 8 + 25 + 8 = 41s, which leaves real headroom.
- * Raising either number means redoing this arithmetic.
+ * What this ladder is actually measured against is `CACHE_READ_DEADLINE_MS`, the deadline
+ * `capture` enforces inside the scope, because that is the one that fires first by design.
+ * The ladder has to finish inside it or a working-but-slow backend would be cut off by a
+ * backstop meant for a stalled one.
+ *
+ * Nesting sets the arithmetic. `getProductByHandle` awaits `getRegionId`, one cache scope
+ * inside another, and the inner fill's time counts against the outer's. Only one caller ever
+ * holds the wake (`claimWake`), so the worst chain is one full ladder plus one fast failure:
+ * 8 + 25 + 8 = 41s, inside the 45s deadline. Raising any of these means redoing this.
  */
-const USE_CACHE_FILL_CEILING_MS = 50_000;
 const COLD_START_TIMEOUT_MS = 25_000;
 const WAKE_COOLDOWN_MS = 60_000;
 
@@ -84,10 +86,11 @@ const WAKE_COOLDOWN_MS = 60_000;
  * free instance often takes longer than forty-five seconds anyway, so that branch was
  * already unreliable. The wake's real value is for the request after this one.
  */
-if (COLD_START_TIMEOUT_MS + DEFAULT_TIMEOUT_MS >= USE_CACHE_FILL_CEILING_MS) {
+if (COLD_START_TIMEOUT_MS + DEFAULT_TIMEOUT_MS * 2 >= CACHE_READ_DEADLINE_MS) {
   throw new Error(
-    "The Medusa retry ladder no longer fits inside Next's use cache fill ceiling. " +
-      "Lower COLD_START_TIMEOUT_MS: overrunning it fails the production build.",
+    "The Medusa retry ladder no longer fits inside the cached-read deadline. " +
+      "Lower COLD_START_TIMEOUT_MS: a ladder that outlives the deadline turns a slow " +
+      "backend into a stalled one and takes the production build with it.",
   );
 }
 

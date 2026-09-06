@@ -154,19 +154,40 @@ or `src/app/layout.tsx` can silently cost the whole site its shell. Run
 
 **The build reads the catalogue, and a cache fill is the unit that must not fail.** Since the
 storefront started prerendering, `next build` generates fifty-eight pages from live commerce
-data, and every one of those reads happens inside a `use cache` scope. Two consequences, both
-of which cost a deploy before they were understood. First, a scope that *throws* fails the
-prerender of whichever page needed it, however carefully the caller degrades: every
-`degradeGracefully` call runs, logs, returns its fallback, and the build dies anyway.
-`<Suspense>` does not help, because it catches suspension and not errors. That is what
-ADR-004 and `lib/cached-read.ts` exist for, and the build now completes with every catalogue
-read failing. Second, Next aborts a cache fill after **fifty seconds** and that ceiling is not
-configurable, so the whole retry ladder in `lib/medusa.ts` has to fit inside it, nesting
-included (`getProductByHandle` awaits `getRegionId`, and the inner fill's time counts against
-the outer's). The constant there is asserted at import; raising a timeout means redoing that
-arithmetic. `scripts/wait-for-backend.mjs` is no longer what keeps the build alive, but it
-still wakes a sleeping instance once rather than fifty-eight times and turns "the backend is
-unreachable" into a line that says so.
+data, and every one of those reads happens inside a `use cache` scope. Three consequences,
+each of which cost a deploy before it was understood.
+
+First, a scope that *throws* fails the prerender of whichever page needed it, however
+carefully the caller degrades: every `degradeGracefully` call runs, logs, returns its
+fallback, and the build dies anyway. `<Suspense>` does not help, because it catches suspension
+and not errors. That is what ADR-004 and `lib/cached-read.ts` exist for, and the build now
+completes with every catalogue read failing.
+
+Second, **a scope that never settles cannot be caught at all**, and catching Next's own stall
+error does not save the build: the framework records it on the work store, so the page's
+prerender fails whether or not userland handled it. A deploy log showing
+`installments.cheapest failed; rendering without it` followed by a dead build is exactly this.
+So `capture` races every read against `CACHE_READ_DEADLINE_MS` and a stall becomes a recorded
+failure instead of a hung fill.
+
+Third, the fill budget is **configurable and defaults to something derived from an unrelated
+setting**: unset, `experimental.useCacheTimeout` is ninety per cent of
+`staticPageGenerationTimeout`, so this project's 180 silently bought a 162 second fill budget
+while the code asserted a "hard, unconfigurable fifty seconds" it had never had. It is pinned
+in `next.config.ts` now. Four numbers sit in a stated order and each is asserted rather than
+assumed: the `lib/medusa.ts` ladder (41s worst case, nesting included, since
+`getProductByHandle` awaits `getRegionId` and the inner fill's time counts against the
+outer's) fits inside the 45s deadline, which fits inside the 60s fill timeout, which fits
+inside the 180s page budget. `medusa.ts` throws at import if the first stops holding; changing
+any of them means redoing the whole arithmetic.
+
+`scripts/wait-for-backend.mjs` is no longer what keeps the build alive, but it is what stops
+a *successful* build shipping an outage in prerendered HTML, and it wakes a sleeping instance
+once rather than fifty-eight times. It probes the store path with the publishable key rather
+than only `/health`, because liveness answers before the store can: a deploy had green health
+and 25 second timeouts on `/store/product-categories` at the same moment. That probe is also
+the only one that can see a bad publishable key, which `/health` does not take and which
+Medusa rejects with 400 rather than 401.
 
 Two behaviours come with Cache Components. React keeps the route you navigated away from
 mounted and hidden (`<Activity>`), so an unscoped test locator can match two routes at once.

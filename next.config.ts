@@ -83,8 +83,22 @@ const config: NextConfig = {
    *
    * The longer budget is for the backend rather than the CPU. A free-tier backend that is
    * cold or mid-redeploy can spend the full client timeout before a page gives up on it.
+   *
+   * `useCacheTimeout` is how long a `use cache` fill may stall before Next kills it, and it
+   * is pinned here because the default is derived from the line below it: ninety per cent of
+   * `staticPageGenerationTimeout`. That coupling is invisible and it bites. Raising the page
+   * budget to 180s for the backend's sake silently raised the fill budget to 162s, so a
+   * single stalled catalogue read sat there for most of three minutes before failing the
+   * build, and the code asserting a "hard, unconfigurable fifty seconds" was guarding a
+   * number this project had never had.
+   *
+   * 60s is chosen against `CACHE_READ_DEADLINE_MS` in `lib/cached-read.ts`, not against the
+   * page budget. That deadline (45s) is the one that should fire, because it records the
+   * failure inside the scope and lets the page degrade; this is the backstop behind it, far
+   * enough back that the deadline always wins and near enough that a fill which somehow
+   * outlives both still fails while the page budget can still report it.
    */
-  experimental: { cpus: 1 },
+  experimental: { cpus: 1, useCacheTimeout: 60 },
   staticPageGenerationTimeout: 180,
 
   /*

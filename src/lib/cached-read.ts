@@ -32,6 +32,22 @@ import { AppError, type ErrorCode } from "@/lib/pk";
  * profile that short reads as dynamic during a blocking prerender and fails the static
  * routes, which is the same build failure by another route. `minutes` is the shortest life
  * that a fully static page can still be prerendered with, measured rather than assumed.
+ *
+ * **Why catching an error is not enough on its own.** A read that never settles never throws,
+ * so there is nothing for the `catch` above to catch, and the fill hangs until Next's own
+ * stall timer fires. That timer does not merely abort the fill: it assigns the error to
+ * `workStore.invalidDynamicUsageError`, which fails the page's prerender whether or not
+ * userland caught it. So `degradeGracefully` catching a `UseCacheTimeoutError` looks like a
+ * handled failure in the log and still ends the build, which is exactly what a deploy showed:
+ * `installments.cheapest failed; rendering without it` followed by a dead build.
+ *
+ * The deadline below is what closes that. Every captured read is raced against it, so a read
+ * that stalls for any reason — a socket that never answers, a starved event loop, something
+ * inside the framework — becomes a recorded failure rather than a hung fill. It is deliberately
+ * longer than the slowest legitimate chain `lib/medusa.ts` can produce and shorter than the
+ * fill timeout pinned in `next.config.ts`, and both ends of that are asserted rather than
+ * assumed: `medusa.ts` fails at import if its ladder outgrows this, and the config comment
+ * carries the other half.
  */
 export type Degradable<T> =
   | { ok: true; value: T }
@@ -61,10 +77,49 @@ function isControlFlowDigest(error: unknown): boolean {
   );
 }
 
+/**
+ * How long a cached read may take before it is treated as failed.
+ *
+ * Not a network timeout: `lib/medusa.ts` already gives every request one of those, and its
+ * whole retry ladder is asserted to finish inside this. This is the backstop for a read that
+ * does not settle at all, which is a different failure and the one that has actually taken
+ * deploys down. A stalled fill cannot be caught, only outlived.
+ */
+export const CACHE_READ_DEADLINE_MS = 45_000;
+
+/**
+ * Races a read against the deadline.
+ *
+ * The losing read is abandoned rather than cancelled, which is correct here: the caller has
+ * no handle to cancel and the value would be discarded anyway. `Promise.race` has already
+ * attached handlers to it, so a late rejection is not an unhandled one, and an abandoned
+ * promise is not part of the cache entry so it cannot hold the fill open.
+ */
+async function withDeadline<T>(read: () => Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      read(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new AppError("PROVIDER_UNAVAILABLE", {
+              message: "The store is taking longer than usual to respond. Please try again.",
+              internal: { stalled: true, deadlineMs: CACHE_READ_DEADLINE_MS },
+            }),
+          );
+        }, CACHE_READ_DEADLINE_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Runs a read inside a `use cache` scope so the scope completes whatever the read does. */
 export async function capture<T>(read: () => Promise<T>): Promise<Degradable<T>> {
   try {
-    return { ok: true, value: await read() };
+    return { ok: true, value: await withDeadline(read) };
   } catch (error) {
     // Redirect, notFound and the dynamic-rendering bailout are control flow, not failures.
     // Storing one as a cached error would silently convert a redirect into an outage, and

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/pk";
 
 /**
@@ -9,7 +9,11 @@ import { AppError } from "@/lib/pk";
 const cacheLife = vi.fn();
 vi.mock("next/cache", () => ({ cacheLife: (...args: unknown[]) => cacheLife(...args), cacheTag: vi.fn() }));
 
-const { capture, unwrap } = await import("./cached-read");
+const { capture, unwrap, CACHE_READ_DEADLINE_MS } = await import("./cached-read");
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /**
  * The contract that keeps a deploy alive without letting the site lie.
@@ -42,6 +46,46 @@ describe("capture", () => {
     expect(result.code).toBe("PROVIDER_UNAVAILABLE");
     // The whole point: an outage is held for minutes, never the hour a good read earns.
     expect(cacheLife).toHaveBeenCalledWith("minutes");
+  });
+
+  /**
+   * The failure the catch cannot see.
+   *
+   * A read that never settles never throws, so the fill hangs until Next's own stall timer
+   * fires -- and that timer records the error on the work store, which fails the page's
+   * prerender whether or not userland caught it. A deploy died exactly this way: the log
+   * showed `installments.cheapest failed; rendering without it` and the build ended anyway.
+   * The deadline is the only thing standing between a stalled read and a dead build.
+   */
+  it("records a stalled read as a failure instead of hanging the fill", async () => {
+    vi.useFakeTimers();
+    cacheLife.mockClear();
+
+    // Never settles, the way the read that took the build down did not.
+    const pending = capture(() => new Promise<string>(() => {}));
+
+    await vi.advanceTimersByTimeAsync(CACHE_READ_DEADLINE_MS);
+    const result = await pending;
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.code).toBe("PROVIDER_UNAVAILABLE");
+    expect(result.internal).toMatchObject({ stalled: true });
+    expect(cacheLife).toHaveBeenCalledWith("minutes");
+  });
+
+  it("gives a read that finishes inside the deadline its real value", async () => {
+    vi.useFakeTimers();
+
+    const pending = capture(
+      () =>
+        new Promise<string>((resolve) => {
+          setTimeout(() => resolve("in time"), CACHE_READ_DEADLINE_MS - 1_000);
+        }),
+    );
+
+    await vi.advanceTimersByTimeAsync(CACHE_READ_DEADLINE_MS - 1_000);
+    expect(await pending).toEqual({ ok: true, value: "in time" });
   });
 
   it("survives an unserialisable cause, which a cache entry could not hold", async () => {

@@ -7,10 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * checks, because both only misbehave when the backend is unreachable, which is precisely
  * the case no green test run ever exercises.
  *
- * A storefront deploy failed on exactly this: eight seconds plus a forty-five second wake
- * is fifty-three, Next aborts a `use cache` fill at fifty, and every catalogue read runs
- * inside one. The graceful fallbacks were all correct and none of them was ever reached,
- * because the framework killed the fill before our own error handling could run.
+ * A storefront deploy failed on exactly this: the ladder ran longer than the budget of the
+ * `use cache` scope every catalogue read runs inside. The graceful fallbacks were all
+ * correct and none of them was ever reached, because the fill was killed before our own
+ * error handling could run -- and a killed fill fails the page whether or not the caller
+ * catches it.
  *
  * The module keeps the wake claim in module scope, so each test imports it freshly.
  */
@@ -63,11 +64,13 @@ describe("cold-start wake", () => {
   });
 
   /**
-   * The whole ladder, including the worst nested chain, has to land inside Next's fifty
-   * second cache-fill ceiling. A build spends this budget on the very first catalogue read,
-   * so overrunning it does not degrade a page, it ends the deploy.
+   * The whole ladder, including the worst nested chain, has to land inside
+   * `CACHE_READ_DEADLINE_MS` -- the deadline `capture` enforces inside the cache scope, not
+   * Next's own stall timer behind it. That ordering is the design: the deadline records a
+   * failure the page can degrade from, where the stall timer ends the build. So a ladder
+   * that outlives the deadline turns a merely slow backend into a fatal one.
    */
-  it("finishes the whole ladder inside Next's cache-fill ceiling", async () => {
+  it("finishes the whole ladder inside the cached-read deadline", async () => {
     const fetchMock = hangingFetch();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -81,7 +84,8 @@ describe("cold-start wake", () => {
 
     // Worst nested chain is this ladder plus one fast failure, the cooldown having denied
     // a second wake to the outer scope.
-    expect(Date.now() - started + 8_000).toBeLessThan(50_000);
+    const { CACHE_READ_DEADLINE_MS } = await import("./cached-read");
+    expect(Date.now() - started + 8_000).toBeLessThan(CACHE_READ_DEADLINE_MS);
   });
 
   /**
