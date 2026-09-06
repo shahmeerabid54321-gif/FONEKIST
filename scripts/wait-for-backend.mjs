@@ -23,7 +23,26 @@
  * produce a usable deploy; it produces the same failure a few minutes later wearing a much
  * worse error message. Failing here spends a few seconds and says exactly what is wrong.
  */
+import { existsSync } from "node:fs";
 import process from "node:process";
+
+/**
+ * Reads `.env.local` the way the build itself does.
+ *
+ * A real environment variable always wins, which is the deployment case: Render sets
+ * `MEDUSA_BACKEND_URL` in the build environment and no file is involved. Locally there is no
+ * such variable and the URL lives in `.env.local`, which Next loads for the build but a plain
+ * Node script does not. Without this the guard cheerfully probed `localhost:9000`, found the
+ * development backend answering, and reported a backend the build was never going to use.
+ */
+if (!process.env.MEDUSA_BACKEND_URL && existsSync(".env.local")) {
+  try {
+    process.loadEnvFile(".env.local");
+  } catch {
+    // A malformed or unreadable file is not worth failing the build over: the probe below
+    // falls back to the default origin and still reports honestly on whatever it reaches.
+  }
+}
 
 const BASE_URL = process.env.MEDUSA_BACKEND_URL ?? "http://localhost:9000";
 
