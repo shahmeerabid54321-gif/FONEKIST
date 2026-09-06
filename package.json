@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/derive-media.mjs && next dev --port 3001",
-    "build": "node scripts/derive-media.mjs && next build && node scripts/prepare-standalone.mjs",
+    "build": "node scripts/derive-media.mjs && next build --webpack && node scripts/prepare-standalone.mjs",
     "start": "next start --port 3001",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit",

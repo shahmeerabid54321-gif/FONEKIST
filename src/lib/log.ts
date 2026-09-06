@@ -39,7 +39,10 @@ function emit(level: Level, message: string, context: LogContext, error?: unknow
   const appError = error === undefined ? null : AppError.from(error);
 
   const entry = {
-    timestamp: new Date().toISOString(),
+    // Cache Components deliberately rejects ambient wall-clock reads while prerendering.
+    // Logging is telemetry rather than rendered output, so use the monotonic clock Next
+    // explicitly permits and translate it back to an ISO timestamp for the log transport.
+    timestamp: new Date(performance.timeOrigin + performance.now()).toISOString(),
     environment: process.env.NODE_ENV ?? "development",
     service: "fonekist",
     level,
