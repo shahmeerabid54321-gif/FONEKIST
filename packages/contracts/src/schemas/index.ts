@@ -3,3 +3,5 @@ export * from "./api.js";
 export * from "./catalog.js";
 export * from "./brands.js";
 export * from "./installments.js";
+
+export * from "./inquiries.js";

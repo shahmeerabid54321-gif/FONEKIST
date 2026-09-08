@@ -33,7 +33,7 @@ const DEST = join(ROOT, "src", "lib", "pk");
 /** Overridable so a checkout in a different place, or CI, can still run this. */
 const SOURCE =
   process.env.PK_CONTRACTS_SRC ??
-  resolve(ROOT, "..", "WEBSITE DESIGN", "packages", "contracts", "src");
+  resolve(ROOT, "packages", "contracts", "src");
 
 /** The closed list of vendored files. Adding a dependency on upstream means adding it here. */
 /*
@@ -59,6 +59,7 @@ const FILES = [
   "states/installment.ts",
   "states/index.ts",
   "schemas/pakistan.ts",
+  "schemas/inquiries.ts",
   "schemas/catalog.ts",
   "schemas/brands.ts",
   "schemas/installments.ts",

@@ -10,6 +10,9 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Playwright clears this directory before a run. Keep capacity reports and local
+  // test environments outside it rather than deleting them with browser artifacts.
+  outputDir: "./test-results/playwright",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

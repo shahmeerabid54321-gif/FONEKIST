@@ -158,8 +158,6 @@ const config: NextConfig = {
   async redirects() {
     return [
       { source: "/cart", destination: "/query", permanent: true },
-      { source: "/checkout", destination: "/query", permanent: true },
-      { source: "/checkout/:path*", destination: "/query", permanent: true },
     ];
   },
 

@@ -9,7 +9,7 @@ const ROOT = resolve(HERE, "..", "..", "..");
 
 const UPSTREAM =
   process.env.PK_CONTRACTS_SRC ??
-  resolve(ROOT, "..", "WEBSITE DESIGN", "packages", "contracts", "src");
+  resolve(ROOT, "packages", "contracts", "src");
 
 /**
  * FONEKIST vendors part of `@pk/contracts` because it lives in its own repository and

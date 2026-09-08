@@ -23,6 +23,14 @@ export interface Policy {
 export const RETURN_WINDOW_DAYS = publicEnv.NEXT_PUBLIC_RETURN_WINDOW_DAYS;
 
 export const POLICIES: Record<string, Policy> = {
+  privacy: {
+    slug: "privacy", title: "Privacy and your inquiry", summary: "How Fonekist handles the information you share.",
+    sections: [
+      { heading: "Inquiry information", body: ["We collect your contact details, CNIC, delivery address, selected plans and any notes you provide to respond to your inquiry. Sending an inquiry does not create an order or credit agreement."] },
+      { heading: "Access and retention", body: ["Inquiry contact and identity details are encrypted in storage. Staff access to contact details is recorded, and CNIC is masked in the inquiry screen. Inquiry identity details are scheduled for deletion after 90 days. Plan and consent records are retained separately from identity details."] },
+      { heading: "Your choices", body: ["Contact the shop to request a correction or deletion of your inquiry details. Do not put identity document numbers or payment details in inquiry notes."] },
+    ],
+  },
   installments: {
     slug: "installments",
     title: "Buying on installments",

@@ -109,13 +109,14 @@ test.describe("the empty query", () => {
 });
 
 test.describe("the routes the cash rail used to own", () => {
-  test("/cart and /checkout land on the query instead of a 404", async ({ page }) => {
+  test("the legacy cart redirects and checkout has its inquiry entry point", async ({ page }) => {
     // Both were live on the deployed site, so they are in histories and bookmarks. A 404
     // would read as a broken shop rather than a changed one.
     await page.goto("/cart");
     await expect(page).toHaveURL(/\/query$/);
 
     await page.goto("/checkout");
-    await expect(page).toHaveURL(/\/query$/);
+    await expect(page).toHaveURL(/\/checkout$/);
+    await expect(page.getByRole("heading", { name: "Send your inquiry" })).toBeVisible();
   });
 });

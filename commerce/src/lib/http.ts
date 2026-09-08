@@ -40,7 +40,9 @@ export function fail(error: unknown, requestId: string, withStatus = false) {
   const isExplicit =
     typeof error === "object" && error !== null && "code" in error && "message" in error;
 
-  const responseError = isExplicit
+  const responseError = AppError.is(error)
+    ? error.toResponseError()
+    : isExplicit
     ? {
         code: (error as ExplicitError).code,
         message: (error as ExplicitError).message,

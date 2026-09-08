@@ -10,3 +10,5 @@ export * from "./api";
 export * from "./catalog";
 export * from "./brands";
 export * from "./installments";
+
+export * from "./inquiries";

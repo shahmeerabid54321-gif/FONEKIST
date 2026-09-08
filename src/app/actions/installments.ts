@@ -1,10 +1,10 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { AppError, IDEMPOTENCY_KEY_HEADER } from "@/lib/pk";
 import { getOrCreateBasket, addLineItem, getBasket } from "@/lib/reservation";
 import { medusaFetch } from "@/lib/medusa";
 import { log } from "@/lib/log";
+import { features } from "@/lib/features";
 
 /**
  * The installment application Server Action.
@@ -16,7 +16,7 @@ import { log } from "@/lib/log";
  *
  * It does two things that are its own responsibility:
  *
- *  - **It mints the idempotency key.** A double-tapped submit on a slow connection is the
+ *  - **It preserves the form's idempotency key.** A double-tapped submit on a slow connection is the
  *    normal case, not the exotic one, and without a key it would produce two applications,
  *    two orders and two reservations (INST-007).
  *  - **It never returns the submitted data back to the browser.** The result carries the
@@ -39,6 +39,13 @@ export async function submitApplicationAction(
   formData: FormData,
 ): Promise<ApplicationResult> {
   const value = (key: string): string => String(formData.get(key) ?? "").trim();
+  if (!features.installments) {
+    return { ok: false, code: "FORBIDDEN", message: "Applications are not available at the moment." };
+  }
+  const submissionKey = value("idempotency_key");
+  if (!/^[a-f0-9]{32}$/.test(submissionKey)) {
+    return { ok: false, code: "VALIDATION_ERROR", message: "Refresh this form before submitting." };
+  }
 
   const variantId = value("variant_id");
   const planId = value("plan_id");
@@ -124,7 +131,7 @@ export async function submitApplicationAction(
       data: { reference: string; state: string; reserved_until: string };
     }>("/store/installment-applications", {
       method: "POST",
-      headers: { [IDEMPOTENCY_KEY_HEADER]: randomUUID() },
+      headers: { [IDEMPOTENCY_KEY_HEADER]: submissionKey },
       body: JSON.stringify(payload),
       cache: "no-store",
       // Placing the order and reserving stock is slower than a read.

@@ -1,4 +1,5 @@
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
+import { catalogMediaModules } from './src/lib/catalog-media-config';
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
@@ -73,7 +74,9 @@ module.exports = defineConfig({
     disable: process.env.DISABLE_ADMIN === "true",
   },
   modules: [
+    ...catalogMediaModules(process.env),
     ...infrastructureModules,
+    { resolve: "./src/modules/storefront" },
 
     // Custom electronics domain modules — only where Medusa has a genuine gap (ADR-002).
     {

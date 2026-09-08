@@ -232,6 +232,7 @@ export function InstallmentApplicationForm({
       </div>
 
       <input type="hidden" name="variant_id" value={variantId} />
+      <input type="hidden" name="idempotency_key" value={uploadToken} />
       <input type="hidden" name="plan_id" value={plan.id} />
       <input type="hidden" name="terms_version" value={terms.version} />
       <input type="hidden" name="document_ids" value={documentIds} />

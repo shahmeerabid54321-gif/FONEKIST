@@ -22,7 +22,7 @@ import { log } from "@/lib/log";
  */
 
 /** Tags a caller may expire. An open list would let one request invalidate everything. */
-const KNOWN_TAGS = new Set(["search", "categories", "regions"]);
+const KNOWN_TAGS = new Set(["search", "categories", "regions", "storefront-settings"]);
 
 /** Prefixed tags, expired as `product:<handle>` and so on. */
 const KNOWN_PREFIXES = ["product:", "product-extras:", "plans:", "brand:", "stock:"];

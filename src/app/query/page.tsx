@@ -132,6 +132,7 @@ async function QueryRows() {
             An agreement covers one handset, so choose the one you want and apply for it.
           </p>
 
+          <Link href="/checkout" className="mt-6 inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] bg-[var(--text)] px-5 font-semibold text-[var(--surface)]">Continue to inquiry</Link>
           <ul className="mt-8 space-y-8">
             {resolved.map((row) => {
               const productHref = dynamicRoute(

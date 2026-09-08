@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getStorefrontSettings } from "@/lib/storefront-settings";
 import { formatPkr } from "@/lib/pk";
 import { listBrands } from "@/lib/brands";
 import { features } from "@/lib/features";
@@ -102,6 +103,7 @@ export default async function HomePage() {
     .filter((tile): tile is BrandTile => tile !== null)
     .sort((a, b) => b.count - a.count);
 
+  const content = await degradeGracefully("home.settings", null, getStorefrontSettings);
   const slides: HeroSlide[] = [];
 
   if (flagship) {
@@ -150,7 +152,7 @@ export default async function HomePage() {
 
   return (
     <div>
-      <HeroBanner slides={slides} />
+      <HeroBanner slides={content?.banners.length ? content.banners.filter(banner => banner.active) : slides} />
       <TrustStrip />
 
       {tiles.length > 0 && (

@@ -21,6 +21,7 @@ import { IDEMPOTENCY_MODULE } from "../../../modules/idempotency";
 import type IdempotencyService from "../../../modules/idempotency/service";
 import { clientIpOf, fail, ok, requestIdOf } from "../../../lib/http";
 import { rateLimit } from "../../../lib/rate-limit";
+import { isGuestCustomerRace } from "../../../lib/commerce-error";
 import { sendNotification } from "../../../lib/notifications/send";
 import { consentText, reservationTtlHours, retentionDays, termsVersion } from "../../../lib/installment-terms";
 
@@ -244,7 +245,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
         const address = input.applicant.address;
         const [firstName, ...restOfName] = address.full_name.split(" ");
 
-        await updateCartWorkflow(req.scope).run({
+        const updateAddress = () => updateCartWorkflow(req.scope).run({
           input: {
             id: cart.id,
             email: input.applicant.email,
@@ -263,6 +264,16 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
             },
           },
         });
+
+        try {
+          await updateAddress();
+        } catch (error) {
+          // Concurrent guest checkouts can race to create the same email. The losing
+          // workflow has rolled back; a fresh run finds the now-existing customer.
+          // This retry precedes payment, order creation and stock reservation.
+          if (!isGuestCustomerRace(error)) throw error;
+          await updateAddress();
+        }
 
         const { result: shippingOptions } = await listShippingOptionsForCartWithPricingWorkflow(
           req.scope,

@@ -17,3 +17,4 @@ playwright-report/
 coverage/
 .cache/
 commerce/.documents/
+graphify-out/

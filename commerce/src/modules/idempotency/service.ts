@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { MedusaService } from "@medusajs/framework/utils";
 import { AppError, type IdempotentOperation } from "@pk/contracts";
 import { IdempotencyRecord } from "./models";
+import { commerceError } from "../../lib/commerce-error";
 
 /** How long an in-progress record blocks a concurrent attempt before it is considered stale. */
 const LOCK_TTL_MS = 60_000;
@@ -109,7 +110,7 @@ class IdempotencyService extends MedusaService({ IdempotencyRecord }) {
       });
       return result;
     } catch (error) {
-      const appError = AppError.from(error);
+      const appError = commerceError(error);
       await this.updateIdempotencyRecords({
         id: recordId,
         // An indeterminate outcome (timeout, provider unavailable) is NOT recorded as

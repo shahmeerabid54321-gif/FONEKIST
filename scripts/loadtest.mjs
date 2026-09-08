@@ -26,6 +26,9 @@
  */
 
 import autocannon from "autocannon";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import os from "node:os";
 
 function positiveNumber(value, name, { integer = false } = {}) {
   const parsed = Number(value);
@@ -102,14 +105,19 @@ async function measure(path, connections) {
     headers: { "accept-encoding": "gzip" },
   });
 
-  const errors = result.non2xx + result.errors + result.timeouts;
+  // Autocannon includes timeouts in errors; adding them again double-counts failures.
+  const errors = result.non2xx + result.errors;
   return {
     rps: result.requests.average,
     p50: result.latency.p50,
-    p95: result.latency.p97_5,
+    p97_5: result.latency.p97_5,
     p99: result.latency.p99,
     errors,
     bytesPerSec: result.throughput.average,
+    completed: result.requests.total,
+    non2xx: result.non2xx,
+    socketErrors: result.errors,
+    timeouts: result.timeouts,
   };
 }
 
@@ -154,11 +162,23 @@ async function main() {
   );
 
   let failures = 0;
+  const report = {
+    createdAt: new Date().toISOString(), target: TARGET, durationSeconds: DURATION,
+    thinkTimeSeconds: THINK_TIME_S, cpu: os.cpus()[0]?.model,
+    logicalCpus: os.availableParallelism(), memoryBytes: os.totalmem(),
+    note: "Estimated users are throughput times assumed think time, not tested simultaneous customers. This measures HTTP documents, not browser rendering or order submissions.",
+    results: [],
+  };
+  const saveReport = () => {
+    if (!process.env.REPORT_PATH) return;
+    mkdirSync(dirname(process.env.REPORT_PATH), { recursive: true });
+    writeFileSync(process.env.REPORT_PATH, JSON.stringify({ ...report, failures }, null, 2));
+  };
 
-  for (const connections of CONNECTION_STEPS) {
+  steps: for (const connections of CONNECTION_STEPS) {
     console.log(`\n=== ${connections} concurrent connections ===`);
     console.log(
-      `${pad("route", 24)}${pad("rps", 10)}${pad("min", 8)}${pad("p50", 8)}${pad("p95", 8)}${pad("p99", 9)}${pad("errors", 8)}${pad("~users", 9)}verdict`,
+      `${pad("route", 24)}${pad("rps", 10)}${pad("min", 8)}${pad("p50", 8)}${pad("p97.5", 8)}${pad("p99", 9)}${pad("errors", 8)}${pad("~users", 9)}verdict`,
     );
 
     for (const route of ROUTES) {
@@ -167,20 +187,26 @@ async function main() {
       // Latency is reported, but it is not a pass gate in a saturation test: at hundreds
       // of continuously active connections, queueing latency necessarily grows. The user
       // capacity figure already models real think time from sustained throughput.
-      const ok = r.rps >= route.minRps && r.errors <= TARGETS.maxErrors;
+      const ok = r.completed > 0 && r.rps >= route.minRps && r.errors <= TARGETS.maxErrors;
       if (!ok) failures += 1;
+      report.results.push({ route: route.path, connections, ...r, estimatedUsers: users, passed: ok });
+      saveReport();
 
       console.log(
         pad(route.name, 24) +
           pad(Math.round(r.rps), 10) +
           pad(route.minRps > 0 ? route.minRps : "-", 8) +
           pad(`${r.p50}ms`, 8) +
-          pad(`${r.p95}ms`, 8) +
+          pad(`${r.p97_5}ms`, 8) +
           pad(`${r.p99}ms`, 9) +
           pad(r.errors, 8) +
           pad(users.toLocaleString(), 9) +
           (ok ? "pass" : "FAIL"),
       );
+      if (!ok && process.env.STOP_ON_FAILURE !== "false") {
+        console.error("Stopping at the first failed load step so queued work can drain. Set STOP_ON_FAILURE=false to continue a saturation experiment.");
+        break steps;
+      }
     }
   }
 
@@ -190,6 +216,7 @@ async function main() {
       "on a smaller machine.\n",
   );
 
+  saveReport();
   if (failures > 0) {
     console.error(`${failures} route/step combination(s) missed the pass mark.\n`);
     process.exit(1);

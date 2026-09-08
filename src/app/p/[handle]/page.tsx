@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, type ComponentProps } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -275,7 +275,8 @@ async function ProductBody({
           */}
           <div className="mt-7">
             {plans.length > 0 ? (
-              <PlanSelector
+              <Suspense fallback={<p role="status">Checking availability...</p>}>
+              <LivePlanSelector
                 handle={product.handle}
                 title={displayName(product.title, brand)}
                 variantId={variant.id}
@@ -283,6 +284,7 @@ async function ProductBody({
                 disabled={outOfStock}
                 disabledReason="Out of stock."
               />
+              </Suspense>
             ) : (
               <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-sunken)] p-5">
                 <p className="text-sm font-medium text-[var(--text)]">
@@ -525,4 +527,10 @@ async function LiveStockLine({
       warranty={warranty}
     />
   );
+}
+
+/** Availability gates use the short-lived stock read, just like the availability label. */
+async function LivePlanSelector(props: ComponentProps<typeof PlanSelector>) {
+  const live = await getLiveStock(props.handle, props.variantId);
+  return <PlanSelector {...props} disabled={!live || live.level === "out_of_stock"} disabledReason={live ? "Out of stock." : "Availability could not be confirmed. Please try again."} />;
 }
