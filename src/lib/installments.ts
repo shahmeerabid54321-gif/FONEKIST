@@ -25,6 +25,7 @@ export interface PlanView extends InstallmentDisclosure {
 async function fetchPlans(variantId: string): Promise<Degradable<PlanView[]>> {
   "use cache";
   cacheLife("hours");
+  cacheTag("plans");
   cacheTag(`plans:${variantId}`);
 
   return capture(async () => {

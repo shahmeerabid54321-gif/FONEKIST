@@ -1,6 +1,7 @@
 # Production readiness and local capacity evidence
 
-Status: work in progress. Owner staging review and public production launch are not complete.
+Status: free Render staging is live and automated smoke-tested. Owner review and the public
+production infrastructure decision are not complete.
 
 ## Local test, 8 September 2026
 
@@ -57,7 +58,7 @@ The second burst overlapped browser testing and is diagnostic.
 
 ### Verification
 
-122 storefront unit tests and 158 commerce unit tests pass. One existing storefront test is
+124 storefront unit tests and 161 commerce unit tests pass. One existing storefront test is
 intentionally skipped. Storefront lint/typecheck and commerce/admin typechecks pass.
 React 18 type resolution is scoped to commerce; Next continues using React 19.
 On 9 September, inquiry checkout passed on desktop and mobile against the compiled backend.
@@ -66,12 +67,14 @@ creating a coupon, persistence after reload, viewing masked inquiry details and 
 The 150-case desktop/mobile suite finished with 144 passes, two intentional skips and four
 image fixture failures. The fresh seed had no photo assignments. After attaching the existing
 repository images through the local admin API, all six image checks passed. Checkout also
-passed axe checks in both light and dark modes on desktop/mobile. This is automated coverage;
-manual owner review and actual staging verification remain outstanding.
+passed axe checks in both light and dark modes on desktop/mobile. Live Render smoke tests then
+passed browsing, plan selection, inquiry submission, masked CNIC behavior, admin-shell access,
+auth guards, accessibility and mobile overflow checks. Manual owner review remains outstanding.
 
 Start the built backend from `commerce/.medusa/server`, not `commerce`: the production admin
 assets are emitted there. Local admin tests model the HTTPS proxy header so production's
-secure session cookies are preserved; actual Render TLS behavior still needs verification.
+secure session cookies are preserved. The Render admin shell and protected-route behavior
+were verified over Render TLS; an owner-authenticated live session remains for owner review.
 
 ### Reproduction and evidence
 
@@ -106,6 +109,12 @@ fresh staging database until the owner saves storefront settings; a saved admin 
 always takes precedence. The code default remains closed for environments that omit the
 flag.
 
+Admin edits now call the authenticated storefront cache endpoint. Product, photo, category,
+brand, banner and installment-plan changes expire the affected Next cache tags immediately;
+the normal cache lifetime remains the fallback if the storefront is temporarily unavailable.
+Brand display follows the editable `brand-*` product category, with metadata retained only
+as compatibility for older products.
+
 Durable catalogue storage is configurable with `CATALOG_S3_*` variables documented in
 `commerce/.env.example`. Bucket connectivity and uploaded-photo persistence still require
 verification. With no storage variables, the local provider remains for development.
@@ -115,12 +124,11 @@ The retained 9 September order retest passed 100/100 simultaneous applications w
 
 - Complete wider admin product, image, category, brand and installment-plan verification.
 - Verify photo uploads use durable storage on Render, not ephemeral local files.
-- Validate cache invalidation across workers after admin edits.
 - Implement production capacity controls and measure realistic mixed browsing/submission
   load with explicit latency/error targets. A CDN, shared state and sufficient origin/database
   capacity are needed before certifying 10,000 customers.
-- Run final mobile/desktop and accessibility checks against the resulting production build.
-- Deploy and verify free Render staging, with no production capacity claims, then owner review.
+- Repeat mobile/desktop, accessibility and load checks after the production infrastructure is
+  selected and configured.
 - Replace stand-in photography with merchant-approved product images before public launch.
 
 Render's free services sleep after inactivity, lack horizontal scaling and persistent disks,

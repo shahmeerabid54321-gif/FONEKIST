@@ -11,6 +11,7 @@ import type InstallmentsService from "../../../../modules/installments/service";
 import { fail, ok, requestIdOf } from "../../../../lib/http";
 import { VARIANT_PRICE_FIELDS, pkrPriceOf, type PricedVariant } from "../../../../lib/variant-price";
 import { reindexProducts } from "../../../../lib/search-indexer";
+import { revalidateStorefront } from "../../../../lib/storefront-revalidation";
 
 /**
  * Installment schedules (ADR-028).
@@ -194,6 +195,7 @@ export async function POST(req: AuthenticatedMedusaRequest, res: MedusaResponse)
     // count tells the operator what is now waiting on `installments:regenerate`.
     const variants = await affectedVariants(req, scope, scopeId);
     const repriced = await repriceAndReindex(req, installments, variants);
+    await revalidateStorefront(["plans", "search"], logger);
 
     logger.info(
       `Installment schedule updated at ${scope}${scopeId ? `:${scopeId}` : ""} by ${actor}; ${repriced.variants} variant(s) repriced.`,
@@ -232,6 +234,7 @@ export async function DELETE(req: AuthenticatedMedusaRequest, res: MedusaRespons
 
     const variants = await affectedVariants(req, target.scope, target.scopeId);
     const repriced = await repriceAndReindex(req, installments, variants);
+    await revalidateStorefront(["plans", "search"], logger);
 
     logger.info(
       `Installment schedule at ${target.scope}:${target.scopeId} removed by ${actor}; ${repriced.variants} variant(s) repriced.`,

@@ -109,6 +109,8 @@ export function defaultVariant(product: MedusaProduct): MedusaVariant | undefine
 }
 
 export function brandOf(product: MedusaProduct): string | null {
+  const categoryBrand = product.categories.find((category) => category.handle.startsWith("brand-"));
+  if (categoryBrand?.name.trim()) return categoryBrand.name.trim();
   const brand = product.metadata?.brand;
   return typeof brand === "string" ? brand : null;
 }

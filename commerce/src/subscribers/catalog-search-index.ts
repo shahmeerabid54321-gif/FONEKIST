@@ -1,6 +1,7 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { reindexProducts, removeFromIndex } from "../lib/search-indexer";
+import { revalidateStorefront } from "../lib/storefront-revalidation";
 
 /**
  * Keeps the search index in step with the catalogue.
@@ -25,11 +26,10 @@ export default async function catalogSearchIndexHandler({
     if (event.name === "product.deleted") {
       await removeFromIndex(container, ids);
       logger.info(`[search] removed ${ids.length} product(s) from the index`);
-      return;
+    } else {
+      const { indexed } = await reindexProducts(container, ids);
+      logger.info(`[search] reindexed ${indexed} product(s) after ${event.name}`);
     }
-
-    const { indexed } = await reindexProducts(container, ids);
-    logger.info(`[search] reindexed ${indexed} product(s) after ${event.name}`);
   } catch (error) {
     logger.error(
       `[search] indexing failed for ${event.name} (${ids.join(", ")}): ${
@@ -37,6 +37,26 @@ export default async function catalogSearchIndexHandler({
       }`,
     );
   }
+
+  const tags = ["search", "categories"];
+  if (event.name !== "product.deleted") {
+    try {
+      const query = container.resolve(ContainerRegistrationKeys.QUERY);
+      const { data } = await query.graph({
+        entity: "product",
+        fields: ["handle"],
+        filters: { id: ids },
+      });
+      for (const product of data as { handle?: string }[]) {
+        if (product.handle) tags.push(`product:${product.handle}`, `product-extras:${product.handle}`);
+      }
+    } catch (error) {
+      logger.warn(
+        `[storefront] could not resolve product cache tags after ${event.name} (${error instanceof Error ? error.message : String(error)})`,
+      );
+    }
+  }
+  await revalidateStorefront(tags, logger);
 }
 
 export const config: SubscriberConfig = {

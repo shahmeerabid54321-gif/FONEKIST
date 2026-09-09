@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVariant, priceFor, stockLevelFor, type MedusaProduct, type MedusaVariant } from "./catalog";
+import { brandOf, defaultVariant, priceFor, stockLevelFor, type MedusaProduct, type MedusaVariant } from "./catalog";
 
 /**
  * Catalog read-model tests.
@@ -133,5 +133,31 @@ describe("defaultVariant", () => {
       ]),
     );
     expect(chosen?.id).toBe("cheapest");
+  });
+});
+
+describe("brandOf", () => {
+  const product = {
+    id: "prod_1",
+    title: "Test",
+    subtitle: null,
+    handle: "test",
+    description: null,
+    thumbnail: null,
+    images: [],
+    options: [],
+    variants: [],
+    categories: [],
+    metadata: { brand: "Old brand" },
+  } as MedusaProduct;
+
+  it("uses the brand category an owner assigns in the built-in admin", () => {
+    expect(
+      brandOf({ ...product, categories: [{ id: "cat_1", name: "Samsung", handle: "brand-samsung" }] }),
+    ).toBe("Samsung");
+  });
+
+  it("keeps metadata compatibility for products without a brand category", () => {
+    expect(brandOf({ ...product, categories: [] })).toBe("Old brand");
   });
 });

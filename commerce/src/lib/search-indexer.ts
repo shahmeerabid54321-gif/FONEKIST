@@ -167,7 +167,11 @@ export async function buildSearchDocuments(
 
     const compareAt = Number(variant?.metadata?.compare_at_pkr ?? 0) || null;
 
-    const brandName = typeof product.metadata?.brand === "string" ? product.metadata.brand : null;
+    // Brand categories are editable in the built-in admin. Prefer their display name so
+    // changing a product's assigned brand does not leave stale seed metadata on cards.
+    const brandCategory = product.categories.find((category) => category.handle.startsWith("brand-"));
+    const metadataBrand = typeof product.metadata?.brand === "string" ? product.metadata.brand : null;
+    const brandName = brandCategory?.name?.trim() || metadataBrand;
     const plan = installmentMinimums[product.id];
 
     const categoryIds = product.categories.map((category) => category.id);

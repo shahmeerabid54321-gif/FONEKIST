@@ -4,6 +4,7 @@ import { AppError, storefrontSettingsSchema } from '@pk/contracts';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { storefrontSettings } from '../../../lib/storefront-settings';
+import { revalidateStorefront } from '../../../lib/storefront-revalidation';
 import { fail, ok, requestIdOf } from '../../../lib/http';
 const schema=z.object({channel_id:z.string().min(1).max(100),revision:z.number().int().nonnegative(),configuration:storefrontSettingsSchema});
 export async function GET(req:AuthenticatedMedusaRequest,res:MedusaResponse) {
@@ -33,6 +34,7 @@ export async function POST(req:AuthenticatedMedusaRequest,res:MedusaResponse) {
       if(row)await tx('storefront_content').where({id:row.id}).update(data);
       else await tx('storefront_content').insert({id:'sfcontent_'+randomUUID(),channel_id:input.channel_id,...data});
     });
+    await revalidateStorefront(['storefront-settings'], req.scope.resolve(ContainerRegistrationKeys.LOGGER));
     res.json(ok({revision:input.revision+1},id));
   }catch(error){const {status,body}=fail(error,id,true);res.status(status).json(body);}
 }
