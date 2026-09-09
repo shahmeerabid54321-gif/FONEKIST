@@ -57,7 +57,7 @@ The second burst overlapped browser testing and is diagnostic.
 
 ### Verification
 
-122 storefront unit tests and 156 commerce unit tests pass. One existing storefront test is
+122 storefront unit tests and 158 commerce unit tests pass. One existing storefront test is
 intentionally skipped. Storefront lint/typecheck and commerce/admin typechecks pass.
 React 18 type resolution is scoped to commerce; Next continues using React 19.
 On 9 September, inquiry checkout passed on desktop and mobile against the compiled backend.
@@ -90,18 +90,21 @@ it against business data. `ORDER_CONCURRENCY` accepts 1..100. It does not send r
 ### Verified Render backend configuration (9 September)
 
 Service `srv-dab1vkn10e5c739kht60` is Free in Oregon, serving
-`https://fonekist-backend.onrender.com` from `main`. The last successful commit shown was
-`7a766ba75a88af7a07c7f04926b83dc2e85fa1d3`. Its current build disables admin explicitly.
-Before the next owner-staging deployment, change the build command to:
+`https://fonekist-backend.onrender.com` from `main`. The admin-enabled build command is:
 
 ```sh
 pnpm install --frozen-lockfile && pnpm --filter @pk/contracts build && DISABLE_ADMIN=false pnpm --filter commerce build
 ```
 
-Set runtime `DISABLE_ADMIN=false` and use `node scripts/start-commerce.mjs` as the start
-command. This checks admin assets, migrates from the compiled directory, then serves it.
-The existing database is already provisioned; seeding is not run on every restart.
-These dashboard changes have not been applied yet.
+Runtime `DISABLE_ADMIN=false` and `node scripts/start-commerce.mjs` are saved. The startup
+script checks admin assets, migrates from the compiled directory, then serves the backend;
+it does not seed on every restart. Deployment `dep-daglemqd0e5s73d0j14g` for commit
+`4fc041b` became live after the correctly sized 64-hex-character inquiry encryption key was
+saved. The public health endpoint and compiled admin login shell both returned HTTP 200.
+`INQUIRY_DEFAULT_ENABLED=true` is saved for this owner-review environment. It enables a
+fresh staging database until the owner saves storefront settings; a saved admin setting
+always takes precedence. The code default remains closed for environments that omit the
+flag.
 
 Durable catalogue storage is configurable with `CATALOG_S3_*` variables documented in
 `commerce/.env.example`. Bucket connectivity and uploaded-photo persistence still require
